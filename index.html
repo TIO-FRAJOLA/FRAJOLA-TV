@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frajola TV</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <img src="frajola.jpg" alt="Frajola TV">
+        <span>FRAJOLA <b>TV</b></span>
+    </div>
+
+    <div class="actions">
+        <span id="status">● Lista não conectada</span>
+        <button onclick="showUrl()" class="btn-connect">🔗 Conectar lista</button>
+        <label class="filelabel">
+            📁 Ficheiro M3U
+            <input type="file" id="file" accept=".m3u,.m3u8,.txt">
+        </label>
+        <button onclick="clearSavedList()">Limpar Lista</button>
+        <button onclick="alert('Frajola TV - Versão 1.0')">⚙ Configurações</button>
+    </div>
+</header>
+
+<main>
+
+    <!-- Blocos Principais de Navegação -->
+    <div class="hero">
+        <div class="hero-card" onclick="filterCategory('live')">
+            <div class="icon">📺</div>
+            <div class="title">TV AO VIVO</div>
+        </div>
+
+        <div class="hero-card" onclick="filterCategory('movies')">
+            <div class="icon">🍿</div>
+            <div class="title">FILMES</div>
+        </div>
+
+        <div class="hero-card" onclick="filterCategory('series')">
+            <div class="icon">🎬</div>
+            <div class="title">SÉRIES</div>
+        </div>
+    </div>
+
+    <!-- Barra de Ferramentas / Ações Rápidas -->
+    <div class="quick-bar">
+        <button onclick="showFavorites()">⭐ Favoritos</button>
+        <button onclick="filterCategory('all')">📑 Todos os Canais</button>
+        <button onclick="filterCategory('sports')">⚽ Desportos</button>
+        <button onclick="filterCategory('news')">📰 Notícias</button>
+        <button onclick="refresh()">🔄 Atualizar</button>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" oninput="filterChannels()" placeholder="🔍 Pesquisar canal...">
+        </div>
+    </div>
+
+    <!-- Secção de Conteúdos -->
+    <section class="content-section">
+        <div class="secthead">
+            <span class="sec-title">★ CONTEÚDOS DA SUA LISTA</span>
+            <span class="muted" id="count">0 itens</span>
+        </div>
+
+        <div id="items" class="grid-container">
+            <div class="empty">Carregue uma lista M3U autorizada para começar.</div>
+        </div>
+
+        <div class="player-container">
+            <video id="player" controls autoplay playsinline></video>
+        </div>
+    </section>
+
+</main>
+
+<!-- Modal URL -->
+<dialog id="urlDialog">
+    <h2>Conectar Lista M3U</h2>
+    <p style="margin: 10px 0; color: #8b949e;">Cole o endereço (URL) da sua lista M3U/M3U8:</p>
+
+    <input id="url" placeholder="https://.../lista.m3u" style="width: 100%; padding: 10px; margin-bottom: 15px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 6px;">
+
+    <div class="actions">
+        <button onclick="urlDialog.close()">Cancelar</button>
+        <button class="primary" onclick="loadUrl()">Carregar lista</button>
+    </div>
+</dialog>
+
+<script src="script.js"></script>
+
+</body>
+</html>
