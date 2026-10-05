@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Frajola TV</title>
+
+    <!-- Configuração para Instalação no Telemóvel (PWA) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b111e">
+    <link rel="icon" type="image/jpeg" href="frajola.jpg">
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+      }
+    </script>
+
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>

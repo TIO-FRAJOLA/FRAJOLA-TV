@@ -1,0 +1,15 @@
+{
+  "short_name": "Frajola TV",
+  "name": "Frajola TV Player",
+  "icons": [
+    {
+      "src": "frajola.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#080c14",
+  "theme_color": "#0b111e",
+  "display": "standalone"
+}
