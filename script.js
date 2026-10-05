@@ -5,20 +5,37 @@ let currentSelectedChannel = null;
 let currentView = 'home';
 let selectedCategoryName = 'all';
 
+// LINK PADRÃO AUTOMÁTICO DO BRASIL
+const DEFAULT_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
+
 window.addEventListener('DOMContentLoaded', () => {
     const savedPlaylist = localStorage.getItem('frajola_playlist');
     if (savedPlaylist) {
         try {
             playlistData = JSON.parse(savedPlaylist);
-            processCategories();
-            updateStatus();
+            if (playlistData.length > 0) {
+                processCategories();
+                updateStatus();
+                return;
+            }
         } catch (e) {
             console.error(e);
         }
-    } else {
-        loadBrazilChannels();
     }
+    // Se não houver nada salvo, carrega automaticamente os canais do Brasil
+    loadDefaultChannels();
 });
+
+function loadDefaultChannels() {
+    document.getElementById('status').innerText = '● A carregar canais do Brasil...';
+    fetch(DEFAULT_PLAYLIST_URL)
+        .then(res => res.text())
+        .then(data => parseM3U(data))
+        .catch(err => {
+            document.getElementById('status').innerText = '● Erro ao carregar';
+            console.error(err);
+        });
+}
 
 function switchView(viewName) {
     currentView = viewName;
@@ -39,17 +56,6 @@ function switchView(viewName) {
         document.getElementById('gridTitle').innerText = viewName === 'movies' ? 'Filmes' : 'Séries';
         renderGridContent(viewName);
     }
-}
-
-function loadBrazilChannels() {
-    document.getElementById('status').innerText = '● A carregar canais...';
-    fetch('https://iptv-org.github.io/iptv/countries/br.m3u')
-        .then(res => res.text())
-        .then(data => parseM3U(data))
-        .catch(err => {
-            document.getElementById('status').innerText = '● Erro ao carregar';
-            console.error(err);
-        });
 }
 
 document.getElementById('file').addEventListener('change', function(e) {
@@ -101,14 +107,11 @@ function parseM3U(data) {
             if (currentItem) {
                 currentItem.url = line;
 
-                // Verifica se a URL do canal já existe na lista atual
+                // Evita duplicar o mesmo canal
                 const existingIndex = playlistData.findIndex(item => item.url === currentItem.url);
-
                 if (existingIndex !== -1) {
-                    // Se já existir, substitui o canal antigo pelas novas informações
                     playlistData[existingIndex] = currentItem;
                 } else {
-                    // Se for novo, adiciona sem duplicar
                     playlistData.push(currentItem);
                 }
 
@@ -117,7 +120,6 @@ function parseM3U(data) {
         }
     });
 
-    // Salva a lista combinada e sem duplicados no navegador
     try {
         localStorage.setItem('frajola_playlist', JSON.stringify(playlistData));
     } catch (e) {
@@ -126,7 +128,6 @@ function parseM3U(data) {
 
     processCategories();
     updateStatus();
-    switchView('live');
 }
 
 function processCategories() {
@@ -232,10 +233,8 @@ function playLiveStream(item, element) {
         let playPromise = video.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                // Se o navegador permitir som, tiramos o mute automaticamente
                 video.muted = false;
             }).catch(() => {
-                // Se o navegador bloquear som, reproduz em mute para NÃO travar a imagem
                 video.muted = true;
                 video.play();
             });
@@ -312,5 +311,5 @@ function clearSavedList() {
     categories = {};
     renderCategories();
     renderChannelList([]);
-    document.getElementById('status').innerText = '● Lista não conectada';
+    document.getElementById('status').innerText = '● Lista limpa';
 }
