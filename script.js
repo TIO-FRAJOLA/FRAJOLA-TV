@@ -76,7 +76,6 @@ function loadUrl() {
 
 function parseM3U(data) {
     const lines = data.split('\n');
-    let newItems = [];
     let currentItem = null;
 
     lines.forEach((line, idx) => {
@@ -91,19 +90,34 @@ function parseM3U(data) {
 
             cleanTitle = cleanTitle.replace(/group-title="[^"]*"/gi, '').trim();
 
-            currentItem = { id: playlistData.length + idx, title: cleanTitle, url: '', category: cat, logo: logo };
+            currentItem = { 
+                id: playlistData.length + idx, 
+                title: cleanTitle, 
+                url: '', 
+                category: cat, 
+                logo: logo 
+            };
         } else if (line && !line.startsWith('#')) {
             if (currentItem) {
                 currentItem.url = line;
-                newItems.push(currentItem);
+
+                // Verifica se a URL do canal já existe na lista atual
+                const existingIndex = playlistData.findIndex(item => item.url === currentItem.url);
+
+                if (existingIndex !== -1) {
+                    // Se já existir, substitui o canal antigo pelas novas informações
+                    playlistData[existingIndex] = currentItem;
+                } else {
+                    // Se for novo, adiciona sem duplicar
+                    playlistData.push(currentItem);
+                }
+
                 currentItem = null;
             }
         }
     });
 
-    // Junta o que já existia com o novo link
-    playlistData = playlistData.concat(newItems);
-
+    // Salva a lista combinada e sem duplicados no navegador
     try {
         localStorage.setItem('frajola_playlist', JSON.stringify(playlistData));
     } catch (e) {
