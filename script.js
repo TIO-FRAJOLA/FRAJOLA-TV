@@ -76,7 +76,7 @@ function loadUrl() {
 
 function parseM3U(data) {
     const lines = data.split('\n');
-    playlistData = [];
+    let newItems = [];
     let currentItem = null;
 
     lines.forEach((line, idx) => {
@@ -91,15 +91,18 @@ function parseM3U(data) {
 
             cleanTitle = cleanTitle.replace(/group-title="[^"]*"/gi, '').trim();
 
-            currentItem = { id: idx, title: cleanTitle, url: '', category: cat, logo: logo };
+            currentItem = { id: playlistData.length + idx, title: cleanTitle, url: '', category: cat, logo: logo };
         } else if (line && !line.startsWith('#')) {
             if (currentItem) {
                 currentItem.url = line;
-                playlistData.push(currentItem);
+                newItems.push(currentItem);
                 currentItem = null;
             }
         }
     });
+
+    // Junta o que já existia com o novo link
+    playlistData = playlistData.concat(newItems);
 
     try {
         localStorage.setItem('frajola_playlist', JSON.stringify(playlistData));
