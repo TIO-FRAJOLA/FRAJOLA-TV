@@ -1,31 +1,53 @@
 let playlistData = [];
+let categories = {};
 let favoriteChannels = JSON.parse(localStorage.getItem('frajola_favorites') || '[]');
+let currentSelectedChannel = null;
+let currentView = 'home';
+let selectedCategoryName = 'all';
 
 window.addEventListener('DOMContentLoaded', () => {
     const savedPlaylist = localStorage.getItem('frajola_playlist');
     if (savedPlaylist) {
         try {
             playlistData = JSON.parse(savedPlaylist);
-            renderItems(playlistData);
-            document.getElementById('status').innerText = '● Lista Guardada (' + playlistData.length + ' canais)';
-            document.getElementById('count').innerText = playlistData.length + ' itens';
+            processCategories();
+            updateStatus();
         } catch (e) {
-            console.error('Erro ao carregar lista guardada:', e);
+            console.error(e);
         }
     } else {
         loadBrazilChannels();
     }
 });
 
+function switchView(viewName) {
+    currentView = viewName;
+    document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+    const btn = document.getElementById('btn-' + viewName);
+    if (btn) btn.classList.add('active');
+
+    if (viewName === 'home') {
+        document.getElementById('view-home').classList.add('active');
+    } else if (viewName === 'live') {
+        document.getElementById('view-live').classList.add('active');
+        renderCategories();
+        filterLiveChannels();
+    } else if (viewName === 'movies' || viewName === 'series') {
+        document.getElementById('view-grid').classList.add('active');
+        document.getElementById('gridTitle').innerText = viewName === 'movies' ? 'Filmes' : 'Séries';
+        renderGridContent(viewName);
+    }
+}
+
 function loadBrazilChannels() {
-    document.getElementById('status').innerText = '● A carregar canais do Brasil...';
-    const brUrl = 'https://iptv-org.github.io/iptv/countries/br.m3u';
-    
-    fetch(brUrl)
-        .then(response => response.text())
+    document.getElementById('status').innerText = '● A carregar canais...';
+    fetch('https://iptv-org.github.io/iptv/countries/br.m3u')
+        .then(res => res.text())
         .then(data => parseM3U(data))
         .catch(err => {
-            document.getElementById('status').innerText = '● Erro ao carregar lista BR';
+            document.getElementById('status').innerText = '● Erro ao carregar';
             console.error(err);
         });
 }
@@ -33,32 +55,23 @@ function loadBrazilChannels() {
 document.getElementById('file').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = function(e) {
-        parseM3U(e.target.result);
-    };
+    reader.onload = function(e) { parseM3U(e.target.result); };
     reader.readAsText(file);
 });
 
-function showUrl() {
-    document.getElementById('urlDialog').showModal();
-}
+function showUrl() { document.getElementById('urlDialog').showModal(); }
 
 function loadUrl() {
     const url = document.getElementById('url').value.trim();
     if (!url) return;
-
     fetch(url)
-        .then(response => response.text())
+        .then(res => res.text())
         .then(data => {
             parseM3U(data);
             document.getElementById('urlDialog').close();
         })
-        .catch(err => {
-            alert('Erro ao carregar a lista via URL.');
-            console.error(err);
-        });
+        .catch(err => alert('Erro ao carregar URL'));
 }
 
 function parseM3U(data) {
@@ -66,23 +79,19 @@ function parseM3U(data) {
     playlistData = [];
     let currentItem = null;
 
-    lines.forEach(line => {
+    lines.forEach((line, idx) => {
         line = line.trim();
         if (line.startsWith('#EXTINF:')) {
             let cleanTitle = line.split(',')[1] || 'Sem título';
             let groupMatch = line.match(/group-title="([^"]+)"/i);
-            let category = groupMatch ? groupMatch[1] : 'Geral';
+            let logoMatch = line.match(/tvg-logo="([^"]+)"/i);
 
-            cleanTitle = cleanTitle
-                .replace(/group-title="[^"]*"/gi, '')
-                .replace(/tvg-[a-z]+="[^"]*"/gi, '')
-                .replace(/Mozilla\/[^\s]+/gi, '')
-                .replace(/AppleWebKit\/[^\s]+/gi, '')
-                .replace(/Chrome\/[^\s]+/gi, '')
-                .replace(/Safari\/[^\s]+/gi, '')
-                .trim();
+            let cat = groupMatch ? groupMatch[1] : 'Outros';
+            let logo = logoMatch ? logoMatch[1] : '';
 
-            currentItem = { title: cleanTitle, url: '', category: category };
+            cleanTitle = cleanTitle.replace(/group-title="[^"]*"/gi, '').trim();
+
+            currentItem = { id: idx, title: cleanTitle, url: '', category: cat, logo: logo };
         } else if (line && !line.startsWith('#')) {
             if (currentItem) {
                 currentItem.url = line;
@@ -95,152 +104,182 @@ function parseM3U(data) {
     try {
         localStorage.setItem('frajola_playlist', JSON.stringify(playlistData));
     } catch (e) {
-        console.warn('Lista muito grande para guardar:', e);
+        console.warn('Playlist grande demais para guardar no localStorage');
     }
 
-    renderItems(playlistData);
-    document.getElementById('status').innerText = '● Lista Conectada (' + playlistData.length + ' canais)';
-    document.getElementById('count').innerText = playlistData.length + ' itens';
+    processCategories();
+    updateStatus();
+    switchView('live');
 }
 
-function renderItems(items) {
-    const container = document.getElementById('items');
+function processCategories() {
+    categories = {};
+    playlistData.forEach(item => {
+        let cat = item.category || 'Outros';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(item);
+    });
+}
+
+function updateStatus() {
+    document.getElementById('status').innerText = '● Conectado (' + playlistData.length + ' canais)';
+    document.getElementById('cat-count-all').innerText = playlistData.length;
+    document.getElementById('cat-count-fav').innerText = favoriteChannels.length;
+}
+
+function renderCategories() {
+    const list = document.getElementById('liveCategoryList');
+    list.innerHTML = `
+        <li class="${selectedCategoryName === 'all' ? 'active' : ''}" onclick="selectCategory('all', this)">
+            <span>Todos</span> <span class="badge">${playlistData.length}</span>
+        </li>
+        <li class="${selectedCategoryName === 'fav' ? 'active' : ''}" onclick="selectCategory('fav', this)">
+            <span>⭐ Favoritos</span> <span class="badge">${favoriteChannels.length}</span>
+        </li>
+    `;
+
+    Object.keys(categories).forEach(cat => {
+        const li = document.createElement('li');
+        if (selectedCategoryName === cat) li.className = 'active';
+        li.innerHTML = `<span>${cat}</span> <span class="badge">${categories[cat].length}</span>`;
+        li.onclick = () => selectCategory(cat, li);
+        list.appendChild(li);
+    });
+}
+
+function selectCategory(catName, el) {
+    selectedCategoryName = catName;
+    document.querySelectorAll('#liveCategoryList li').forEach(l => l.classList.remove('active'));
+    if (el) el.classList.add('active');
+    filterLiveChannels();
+}
+
+function filterLiveChannels() {
+    const query = document.getElementById('liveSearchInput').value.toLowerCase();
+    let channels = [];
+
+    if (selectedCategoryName === 'all') {
+        channels = playlistData;
+    } else if (selectedCategoryName === 'fav') {
+        channels = favoriteChannels;
+    } else {
+        channels = categories[selectedCategoryName] || [];
+    }
+
+    if (query) {
+        channels = channels.filter(c => c.title.toLowerCase().includes(query));
+    }
+
+    renderChannelList(channels);
+}
+
+function renderChannelList(channels) {
+    const container = document.getElementById('channelList');
     container.innerHTML = '';
 
-    if (items.length === 0) {
+    if (channels.length === 0) {
         container.innerHTML = '<div class="empty">Nenhum canal encontrado.</div>';
         return;
     }
 
-    items.forEach(item => {
-        const isFav = favoriteChannels.some(f => f.url === item.url);
-        
+    channels.forEach((item, index) => {
         const div = document.createElement('div');
-        div.className = 'tile';
-        
-        const titleSpan = document.createElement('span');
-        titleSpan.innerText = item.title;
-        titleSpan.style.flex = '1';
-        titleSpan.style.overflow = 'hidden';
-        titleSpan.style.textOverflow = 'ellipsis';
-        titleSpan.style.whiteSpace = 'nowrap';
-        titleSpan.onclick = () => playStream(item.url);
+        div.className = 'channel-item';
+        if (currentSelectedChannel && currentSelectedChannel.url === item.url) {
+            div.classList.add('active');
+        }
 
-        const favBtn = document.createElement('button');
-        favBtn.innerText = isFav ? '★' : '☆';
-        favBtn.style.background = 'none';
-        favBtn.style.border = 'none';
-        favBtn.style.color = isFav ? '#f1c40f' : '#64748b';
-        favBtn.style.fontSize = '16px';
-        favBtn.style.padding = '0 0 0 8px';
-        favBtn.style.cursor = 'pointer';
-        favBtn.onclick = (e) => {
-            e.stopPropagation();
-            toggleFavorite(item);
-        };
+        div.innerHTML = `
+            <span class="channel-num">${index + 1}</span>
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title}</span>
+        `;
 
-        div.appendChild(titleSpan);
-        div.appendChild(favBtn);
+        div.onclick = () => playLiveStream(item, div);
         container.appendChild(div);
     });
 }
 
-function toggleFavorite(item) {
-    const index = favoriteChannels.findIndex(f => f.url === item.url);
-    if (index >= 0) {
-        favoriteChannels.splice(index, 1);
-    } else {
-        favoriteChannels.push(item);
-    }
-    localStorage.setItem('frajola_favorites', JSON.stringify(favoriteChannels));
-    filterChannels();
-}
+function playLiveStream(item, element) {
+    currentSelectedChannel = item;
+    document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
+    if (element) element.classList.add('active');
 
-function showFavorites() {
-    renderItems(favoriteChannels);
-    document.getElementById('count').innerText = favoriteChannels.length + ' favoritos';
-}
+    document.getElementById('currentChannelTitle').innerText = item.title;
+    document.getElementById('currentChannelSub').innerText = 'Categoria: ' + item.category;
 
-function filterCategory(type) {
-    if (type === 'all' || type === 'live') {
-        renderItems(playlistData);
-        document.getElementById('count').innerText = playlistData.length + ' itens';
-        return;
-    }
+    const video = document.getElementById('livePlayer');
 
-    const filtered = playlistData.filter(item => {
-        const title = item.title.toLowerCase();
-        const cat = item.category.toLowerCase();
-        
-        if (type === 'news') return title.includes('news') || title.includes('notícia') || cat.includes('news');
-        if (type === 'sports') return title.includes('sport') || title.includes('esporte') || cat.includes('sports');
-        if (type === 'movies') return title.includes('cine') || title.includes('filme') || title.includes('hbo') || cat.includes('movie');
-        if (type === 'series') return title.includes('série') || title.includes('series') || cat.includes('series');
-        return true;
-    });
-
-    renderItems(filtered);
-    document.getElementById('count').innerText = filtered.length + ' itens';
-}
-
-function filterChannels() {
-    const query = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = playlistData.filter(item => item.title.toLowerCase().includes(query));
-    renderItems(filtered);
-    document.getElementById('count').innerText = filtered.length + ' itens';
-}
-
-function playStream(url) {
-    const video = document.getElementById('player');
-    video.scrollIntoView({ behavior: 'smooth' });
-
-    if (window.hlsPlayer) {
-        window.hlsPlayer.destroy();
-    }
+    if (window.hlsPlayer) window.hlsPlayer.destroy();
 
     if (Hls.isSupported()) {
-        const hls = new Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-            backBufferLength: 90
-        });
+        const hls = new Hls();
         window.hlsPlayer = hls;
-        hls.loadSource(url);
+        hls.loadSource(item.url);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            video.play().catch(e => console.log('Autoplay impedido:', e));
-        });
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        hls.startLoad();
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        hls.recoverMediaError();
-                        break;
-                    default:
-                        hls.destroy();
-                        break;
-                }
-            }
-        });
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
+        video.src = item.url;
         video.play();
     }
 }
 
-function refresh() {
-    localStorage.removeItem('frajola_playlist');
-    loadBrazilChannels();
+function toggleFavCurrent() {
+    if (!currentSelectedChannel) return;
+    const index = favoriteChannels.findIndex(f => f.url === currentSelectedChannel.url);
+    if (index >= 0) {
+        favoriteChannels.splice(index, 1);
+        alert('Removido dos favoritos!');
+    } else {
+        favoriteChannels.push(currentSelectedChannel);
+        alert('Adicionado aos favoritos!');
+    }
+    localStorage.setItem('frajola_favorites', JSON.stringify(favoriteChannels));
+    document.getElementById('cat-count-fav').innerText = favoriteChannels.length;
+}
+
+function renderGridContent(type) {
+    const grid = document.getElementById('vodGrid');
+    grid.innerHTML = '';
+
+    const filtered = playlistData.filter(item => {
+        const title = item.title.toLowerCase();
+        const cat = item.category.toLowerCase();
+        if (type === 'movies') return cat.includes('movie') || cat.includes('filme') || title.includes('filme');
+        if (type === 'series') return cat.includes('serie') || cat.includes('série') || title.includes('s01');
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div class="empty">Nenhum conteúdo encontrado para esta categoria.</div>';
+        return;
+    }
+
+    filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'vod-card';
+        card.innerHTML = `
+            <img src="${item.logo || 'frajola.jpg'}" onerror="this.src='frajola.jpg'">
+            <div class="info">${item.title}</div>
+        `;
+        card.onclick = () => {
+            switchView('live');
+            playLiveStream(item, null);
+        };
+        grid.appendChild(card);
+    });
+}
+
+function filterGridContent() {
+    const query = document.getElementById('gridSearchInput').value.toLowerCase();
+    const type = document.getElementById('gridTitle').innerText === 'Filmes' ? 'movies' : 'series';
+    renderGridContent(type);
 }
 
 function clearSavedList() {
     localStorage.removeItem('frajola_playlist');
     playlistData = [];
-    renderItems([]);
+    categories = {};
+    renderCategories();
+    renderChannelList([]);
     document.getElementById('status').innerText = '● Lista não conectada';
-    document.getElementById('count').innerText = '0 itens';
-    alert('Lista removida com sucesso!');
 }
