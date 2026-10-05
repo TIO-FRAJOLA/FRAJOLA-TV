@@ -5,29 +5,17 @@ let currentSelectedChannel = null;
 let currentView = 'home';
 let selectedCategoryName = 'all';
 
-// LINK PADRÃO AUTOMÁTICO DO BRASIL
+// LINK PADRÃO OFICIAL DO BRASIL
 const DEFAULT_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
 
 window.addEventListener('DOMContentLoaded', () => {
-    const savedPlaylist = localStorage.getItem('frajola_playlist');
-    if (savedPlaylist) {
-        try {
-            playlistData = JSON.parse(savedPlaylist);
-            if (playlistData.length > 0) {
-                processCategories();
-                updateStatus();
-                return;
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    }
-    // Se não houver nada salvo, carrega automaticamente os canais do Brasil
+    // Limpa o cache antigo do navegador automaticamente ao abrir o app
+    localStorage.removeItem('frajola_playlist');
     loadDefaultChannels();
 });
 
 function loadDefaultChannels() {
-    document.getElementById('status').innerText = '● A carregar canais do Brasil...';
+    document.getElementById('status').innerText = '● A carregar lista oficial...';
     fetch(DEFAULT_PLAYLIST_URL)
         .then(res => res.text())
         .then(data => parseM3U(data))
@@ -107,7 +95,7 @@ function parseM3U(data) {
             if (currentItem) {
                 currentItem.url = line;
 
-                // Evita duplicar o mesmo canal
+                // Evita estritamente a duplicação do mesmo canal/link
                 const existingIndex = playlistData.findIndex(item => item.url === currentItem.url);
                 if (existingIndex !== -1) {
                     playlistData[existingIndex] = currentItem;
@@ -119,12 +107,6 @@ function parseM3U(data) {
             }
         }
     });
-
-    try {
-        localStorage.setItem('frajola_playlist', JSON.stringify(playlistData));
-    } catch (e) {
-        console.warn('Playlist grande demais para guardar no localStorage');
-    }
 
     processCategories();
     updateStatus();
@@ -306,10 +288,9 @@ function filterGridContent() {
 }
 
 function clearSavedList() {
-    localStorage.removeItem('frajola_playlist');
     playlistData = [];
     categories = {};
     renderCategories();
     renderChannelList([]);
-    document.getElementById('status').innerText = '● Lista limpa';
+    document.getElementById('status').innerText = '● Lista limpa temporariamente';
 }
