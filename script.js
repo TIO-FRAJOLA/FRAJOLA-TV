@@ -211,15 +211,29 @@ function playLiveStream(item, element) {
 
     if (window.hlsPlayer) window.hlsPlayer.destroy();
 
+    const startPlayback = () => {
+        let playPromise = video.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                // Se o navegador permitir som, tiramos o mute automaticamente
+                video.muted = false;
+            }).catch(() => {
+                // Se o navegador bloquear som, reproduz em mute para NÃO travar a imagem
+                video.muted = true;
+                video.play();
+            });
+        }
+    };
+
     if (Hls.isSupported()) {
-        const hls = new Hls();
+        const hls = new Hls({ enableWorker: true });
         window.hlsPlayer = hls;
         hls.loadSource(item.url);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        hls.on(Hls.Events.MANIFEST_PARSED, () => startPlayback());
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = item.url;
-        video.play();
+        startPlayback();
     }
 }
 
