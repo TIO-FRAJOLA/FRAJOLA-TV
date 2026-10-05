@@ -2,133 +2,146 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frajola TV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Frajola TV Player</title>
 
+    <!-- Configurações para Instalar como App (PWA) no Celular/Google Chrome -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b111e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="icon" type="image/jpeg" href="frajola.jpg">
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
-      }
-    </script>
+    <link rel="apple-touch-icon" href="frajola.jpg">
 
+    <!-- CSS Externo e Biblioteca HLS.js para canais ao vivo -->
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <!-- Registro do Service Worker para permitir a instalação -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado!', reg))
+                    .catch(err => console.error('Erro no Service Worker:', err));
+            });
+        }
+    </script>
 </head>
 <body>
 
-<header>
-    <div class="brand">
-        <img src="frajola.jpg" alt="Frajola TV">
-        <span>FRAJOLA <b>TV</b></span>
-    </div>
-
-    <nav class="top-nav">
-        <button class="nav-btn active" id="btn-home" onclick="switchView('home')">Home</button>
-        <button class="nav-btn" id="btn-live" onclick="switchView('live')">TV ao vivo</button>
-        <button class="nav-btn" id="btn-movies" onclick="switchView('movies')">Filmes</button>
-        <button class="nav-btn" id="btn-series" onclick="switchView('series')">Séries</button>
-    </nav>
-
-    <div class="actions">
-        <span id="status">● Lista não conectada</span>
-        <button onclick="showUrl()" class="btn-connect">🔗 Conectar lista</button>
-        <label class="filelabel">
-            📁 M3U
-            <input type="file" id="file" accept=".m3u,.m3u8,.txt">
-        </label>
-        <button onclick="clearSavedList()">Limpar</button>
-    </div>
-</header>
-
-<main>
-
-    <!-- VISTA: HOME / DESTAQUES -->
-    <section id="view-home" class="view-panel active">
-        <div class="hero-cards">
-            <div class="hero-card" onclick="switchView('live')">
-                <div class="icon">📺</div>
-                <div class="title">TV AO VIVO</div>
-            </div>
-            <div class="hero-card" onclick="switchView('movies')">
-                <div class="icon">🍿</div>
-                <div class="title">FILMES</div>
-            </div>
-            <div class="hero-card" onclick="switchView('series')">
-                <div class="icon">🎬</div>
-                <div class="title">SÉRIES</div>
-            </div>
+    <!-- Header / Barra Superior -->
+    <header>
+        <div class="brand">
+            <img src="frajola.jpg" alt="Logo" onerror="this.src='https://via.placeholder.com/32'">
+            <span>Frajola <b>TV</b></span>
         </div>
-    </section>
 
-    <!-- VISTA: TV AO VIVO (3 COLUNAS CONFORME A SUA FOTO) -->
-    <section id="view-live" class="view-panel">
-        <div class="live-tv-container">
-            <!-- Coluna 1: Categorias -->
-            <div class="col-categories">
-                <div class="search-box">
-                    <input type="text" id="liveSearchInput" oninput="filterLiveChannels()" placeholder="🔍 Pesquisar canal...">
+        <nav class="top-nav">
+            <button class="nav-btn active" id="btn-home" onclick="switchView('home')">Início</button>
+            <button class="nav-btn" id="btn-live" onclick="switchView('live')">TV ao Vivo</button>
+            <button class="nav-btn" id="btn-movies" onclick="switchView('movies')">Filmes</button>
+            <button class="nav-btn" id="btn-series" onclick="switchView('series')">Séries</button>
+        </nav>
+
+        <div class="actions">
+            <span id="status">● Desconectado</span>
+            <button class="btn-connect" onclick="showUrl()">🔗 URL</button>
+            <label class="filelabel">
+                📂 Arquivo M3U
+                <input type="file" id="file" accept=".m3u,.m3u8">
+            </label>
+            <button onclick="clearSavedList()" title="Limpar Lista">🗑️</button>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main>
+
+        <!-- Painel Início -->
+        <section id="view-home" class="view-panel active">
+            <div class="hero-cards">
+                <div class="hero-card" onclick="switchView('live')">
+                    <div class="icon">📺</div>
+                    <div class="title">TV ao Vivo</div>
                 </div>
-                <ul id="liveCategoryList" class="cat-list">
-                    <li class="active" onclick="selectCategory('all', this)">
-                        <span>Todos</span> <span class="badge" id="cat-count-all">0</span>
-                    </li>
-                    <li onclick="selectCategory('fav', this)">
-                        <span>⭐ Favoritos</span> <span class="badge" id="cat-count-fav">0</span>
-                    </li>
-                </ul>
+                <div class="hero-card" onclick="switchView('movies')">
+                    <div class="icon">🎬</div>
+                    <div class="title">Filmes</div>
+                </div>
+                <div class="hero-card" onclick="switchView('series')">
+                    <div class="icon">🍿</div>
+                    <div class="title">Séries</div>
+                </div>
             </div>
+        </section>
 
-            <!-- Coluna 2: Lista de Canais -->
-            <div class="col-channels">
-                <div id="channelList" class="channel-list">
-                    <div class="empty">Carregue a lista M3U para ver os canais.</div>
+        <!-- Painel TV ao Vivo (Layout em 3 Colunas) -->
+        <section id="view-live" class="view-panel">
+            <div class="live-tv-container">
+                
+                <!-- Coluna 1: Categorias -->
+                <div class="col-categories">
+                    <div class="search-box">
+                        <input type="text" id="liveSearchInput" placeholder="Pesquisar canal..." oninput="filterLiveChannels()">
+                    </div>
+                    <ul class="cat-list" id="liveCategoryList">
+                        <li class="active" onclick="selectCategory('all', this)">
+                            <span>Todos</span> <span class="badge" id="cat-count-all">0</span>
+                        </li>
+                        <li onclick="selectCategory('fav', this)">
+                            <span>⭐ Favoritos</span> <span class="badge" id="cat-count-fav">0</span>
+                        </li>
+                    </ul>
                 </div>
-            </div>
 
-            <!-- Coluna 3: Player e EPG -->
-            <div class="col-player">
-                <div class="tv-player-wrapper">
-                    <video id="livePlayer" controls autoplay playsinline></video>
+                <!-- Coluna 2: Lista de Canais -->
+                <div class="col-channels" id="channelList">
+                    <div class="empty">Carregando canais...</div>
                 </div>
-                <div class="epg-info" id="epgInfo">
-                    <h3 id="currentChannelTitle">Selecione um canal</h3>
-                    <p id="currentChannelSub" class="muted">Aguardando reprodução...</p>
-                    <div class="epg-actions">
-                        <button onclick="toggleFavCurrent()">⭐ Adicionar aos favoritos</button>
+
+                <!-- Coluna 3: Player de Vídeo e Informações -->
+                <div class="col-player">
+                    <div class="tv-player-wrapper">
+                        <video id="livePlayer" controls autoplay playsinline></video>
+                    </div>
+                    <div class="epg-info">
+                        <h3 id="currentChannelTitle">Selecione um canal</h3>
+                        <p id="currentChannelSub" style="font-size: 12px; color: #94a3b8;">Nenhum canal em reprodução no momento.</p>
+                        <div class="epg-actions">
+                            <button onclick="toggleFavCurrent()">⭐ Favoritar Canal</button>
+                        </div>
                     </div>
                 </div>
+
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- VISTA: FILMES E SÉRIES (GRELHA DE POSTERS) -->
-    <section id="view-grid" class="view-panel">
-        <div class="grid-header">
-            <h2 id="gridTitle">Filmes</h2>
-            <div class="search-box">
-                <input type="text" id="gridSearchInput" oninput="filterGridContent()" placeholder="🔍 Pesquisar...">
+        <!-- Painel de Grid para Filmes e Séries -->
+        <section id="view-grid" class="view-panel">
+            <div class="grid-header">
+                <h2 id="gridTitle">Filmes</h2>
+                <input type="text" id="gridSearchInput" placeholder="Buscar título..." oninput="filterGridContent()" style="background:#0f172a; border:1px solid #1e293b; color:#fff; padding:6px 10px; border-radius:6px;">
             </div>
+            <div class="vod-grid" id="vodGrid">
+                <!-- Conteúdo gerado dinamicamente -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal para Inserir URL M3U -->
+    <dialog id="urlDialog">
+        <h3 style="margin-bottom: 10px;">Inserir URL da Playlist M3U</h3>
+        <input type="text" id="url" placeholder="https://exemplo.com/lista.m3u" style="width: 100%; padding: 8px; margin-bottom: 15px; background: #080c14; border: 1px solid #334155; color: #fff; border-radius: 6px;">
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button onclick="document.getElementById('urlDialog').close()">Cancelar</button>
+            <button class="btn-connect" onclick="loadUrl()">Carregar</button>
         </div>
-        <div id="vodGrid" class="vod-grid"></div>
-    </section>
+    </dialog>
 
-</main>
-
-<!-- MODAL URL -->
-<dialog id="urlDialog">
-    <h2>Conectar Lista M3U</h2>
-    <p style="margin: 10px 0; color: #8b949e;">Cole o endereço (URL) da sua lista M3U:</p>
-    <input id="url" placeholder="https://.../lista.m3u" style="width: 100%; padding: 10px; margin-bottom: 15px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 6px;">
-    <div class="actions">
-        <button onclick="urlDialog.close()">Cancelar</button>
-        <button class="primary" onclick="loadUrl()">Carregar</button>
-    </div>
-</dialog>
-
-<script src="script.js"></script>
-
+    <!-- Script Principal -->
+    <script src="script.js"></script>
 </body>
 </html>

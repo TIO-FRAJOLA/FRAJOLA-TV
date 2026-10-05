@@ -1,3 +1,11 @@
-self.addEventListener('fetch', function(event) {
-    // Service worker básico para permitir instalação PWA
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+  // Mantém o funcionamento padrão de rede
 });
