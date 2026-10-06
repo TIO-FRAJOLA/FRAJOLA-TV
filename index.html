@@ -46,10 +46,10 @@
         </nav>
 
         <div class="actions">
-            <span id="status">● Desconectado</span>
-            <button class="btn-connect" onclick="showUrl()">🔗 URL</button>
+            <span id="status">● Nenhuma lista carregada</span>
+            <button class="btn-connect" onclick="showUrl()">🔗 URL M3U</button>
             <label class="filelabel">
-                📂 Arquivo M3U
+                📂 Ficheiro M3U
                 <input type="file" id="file" accept=".m3u,.m3u8">
             </label>
             <button onclick="clearSavedList()" title="Limpar Lista">🗑️</button>
@@ -98,7 +98,7 @@
 
                 <!-- Coluna 2: Lista de Canais -->
                 <div class="col-channels" id="channelList">
-                    <div class="empty">Carregando canais...</div>
+                    <div class="empty">Carregue uma URL M3U ou um ficheiro para ver os canais.</div>
                 </div>
 
                 <!-- Coluna 3: Player de Vídeo e Informações -->
@@ -120,7 +120,7 @@
 
         <!-- Painel de Grid para Filmes e Séries -->
         <section id="view-grid" class="view-panel">
-            <!-- Gerado Dinamicamente pelo JS para Garantir a Grelha -->
+            <!-- Conteúdo gerado dinamicamente via JS -->
         </section>
 
     </main>
@@ -128,7 +128,7 @@
     <!-- Modal para Inserir URL M3U -->
     <dialog id="urlDialog">
         <h3 style="margin-bottom: 10px;">Inserir URL da Playlist M3U</h3>
-        <input type="text" id="url" placeholder="https://exemplo.com/lista.m3u" style="width: 100%; padding: 8px; margin-bottom: 15px; background: #080c14; border: 1px solid #334155; color: #fff; border-radius: 6px;">
+        <input type="text" id="url" placeholder="https://exemplo.com/sua_lista.m3u" style="width: 100%; padding: 8px; margin-bottom: 15px; background: #080c14; border: 1px solid #334155; color: #fff; border-radius: 6px;">
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
             <button onclick="document.getElementById('urlDialog').close()">Cancelar</button>
             <button class="btn-connect" onclick="loadUrl()">Carregar</button>

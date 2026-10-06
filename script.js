@@ -5,25 +5,13 @@ let currentSelectedChannel = null;
 let currentView = 'home';
 let selectedCategoryName = 'all';
 
-// LINK PADRÃO OFICIAL DO BRASIL
-const DEFAULT_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
-
 window.addEventListener('DOMContentLoaded', () => {
-    // Limpa o cache antigo automaticamente ao abrir o app
-    localStorage.removeItem('frajola_playlist');
-    loadDefaultChannels();
+    // Carrega a playlist do utilizador gravada no navegador, se existir
+    const savedPlaylist = localStorage.getItem('frajola_custom_playlist');
+    if (savedPlaylist) {
+        parseM3U(savedPlaylist);
+    }
 });
-
-function loadDefaultChannels() {
-    document.getElementById('status').innerText = '● A carregar lista oficial...';
-    fetch(DEFAULT_PLAYLIST_URL)
-        .then(res => res.text())
-        .then(data => parseM3U(data))
-        .catch(err => {
-            document.getElementById('status').innerText = '● Erro ao carregar';
-            console.error(err);
-        });
-}
 
 function switchView(viewName) {
     currentView = viewName;
@@ -49,7 +37,11 @@ document.getElementById('file').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) { parseM3U(e.target.result); };
+    reader.onload = function(e) { 
+        const content = e.target.result;
+        localStorage.setItem('frajola_custom_playlist', content);
+        parseM3U(content); 
+    };
     reader.readAsText(file);
 });
 
@@ -58,16 +50,22 @@ function showUrl() { document.getElementById('urlDialog').showModal(); }
 function loadUrl() {
     const url = document.getElementById('url').value.trim();
     if (!url) return;
+    document.getElementById('status').innerText = '● A carregar URL...';
     fetch(url)
         .then(res => res.text())
         .then(data => {
+            localStorage.setItem('frajola_custom_playlist', data);
             parseM3U(data);
             document.getElementById('urlDialog').close();
         })
-        .catch(err => alert('Erro ao carregar URL'));
+        .catch(err => {
+            alert('Erro ao carregar a URL da playlist M3U.');
+            document.getElementById('status').innerText = '● Erro ao carregar';
+        });
 }
 
 function parseM3U(data) {
+    playlistData = [];
     const lines = data.split('\n');
     let currentItem = null;
 
@@ -84,7 +82,7 @@ function parseM3U(data) {
             cleanTitle = cleanTitle.replace(/group-title="[^"]*"/gi, '').trim();
 
             currentItem = { 
-                id: playlistData.length + idx, 
+                id: idx, 
                 title: cleanTitle, 
                 url: '', 
                 category: cat, 
@@ -93,15 +91,7 @@ function parseM3U(data) {
         } else if (line && !line.startsWith('#')) {
             if (currentItem) {
                 currentItem.url = line;
-
-                // Evita estritamente a duplicação do mesmo canal
-                const existingIndex = playlistData.findIndex(item => item.url === currentItem.url);
-                if (existingIndex !== -1) {
-                    playlistData[existingIndex] = currentItem;
-                } else {
-                    playlistData.push(currentItem);
-                }
-
+                playlistData.push(currentItem);
                 currentItem = null;
             }
         }
@@ -109,6 +99,13 @@ function parseM3U(data) {
 
     processCategories();
     updateStatus();
+    
+    if (currentView === 'movies' || currentView === 'series') {
+        renderGridContent(currentView);
+    } else if (currentView === 'live') {
+        renderCategories();
+        filterLiveChannels();
+    }
 }
 
 function processCategories() {
@@ -121,7 +118,7 @@ function processCategories() {
 }
 
 function updateStatus() {
-    document.getElementById('status').innerText = '● Conectado (' + playlistData.length + ' canais)';
+    document.getElementById('status').innerText = '● Conectado (' + playlistData.length + ' itens)';
     document.getElementById('cat-count-all').innerText = playlistData.length;
     document.getElementById('cat-count-fav').innerText = favoriteChannels.length;
 }
@@ -177,7 +174,7 @@ function renderChannelList(channels) {
     container.innerHTML = '';
 
     if (channels.length === 0) {
-        container.innerHTML = '<div class="empty">Nenhum canal encontrado.</div>';
+        container.innerHTML = '<div class="empty">Nenhum item encontrado nesta categoria.</div>';
         return;
     }
 
@@ -250,12 +247,22 @@ function toggleFavCurrent() {
 
 function renderGridContent(type) {
     const viewGrid = document.getElementById('view-grid');
-    
+
+    if (playlistData.length === 0) {
+        viewGrid.innerHTML = `
+            <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2>${type === 'movies' ? 'Filmes' : 'Séries'}</h2>
+            </div>
+            <div class="empty">Nenhuma lista M3U carregada. Adicione os seus filmes ou séries clicando em "🔗 URL M3U" ou "📂 Ficheiro M3U" no topo.</div>
+        `;
+        return;
+    }
+
     const filtered = playlistData.filter(item => {
         const title = item.title.toLowerCase();
         const cat = item.category.toLowerCase();
-        if (type === 'movies') return cat.includes('movie') || cat.includes('filme') || title.includes('filme');
-        if (type === 'series') return cat.includes('serie') || cat.includes('série') || title.includes('s01');
+        if (type === 'movies') return cat.includes('movie') || cat.includes('filme') || cat.includes('vod') || title.includes('filme');
+        if (type === 'series') return cat.includes('serie') || cat.includes('série') || title.includes('s01') || title.includes('s02');
         return true;
     });
 
@@ -265,7 +272,7 @@ function renderGridContent(type) {
                 <h2>${type === 'movies' ? 'Filmes' : 'Séries'}</h2>
                 <input type="text" id="gridSearchInput" placeholder="Buscar título..." oninput="filterGridContent()" style="padding: 6px 10px; background: #0f172a; border: 1px solid #1e293b; color: #fff; border-radius: 4px; font-size: 12px;">
             </div>
-            <div class="empty">Nenhum conteúdo encontrado para esta categoria.</div>
+            <div class="empty">Nenhum ${type === 'movies' ? 'filme' : 'série'} encontrado na lista atual.</div>
         `;
         return;
     }
@@ -304,7 +311,11 @@ function filterGridContent() {
 function clearSavedList() {
     playlistData = [];
     categories = {};
+    localStorage.removeItem('frajola_custom_playlist');
     renderCategories();
     renderChannelList([]);
-    document.getElementById('status').innerText = '● Lista limpa temporariamente';
+    document.getElementById('status').innerText = '● Nenhuma lista carregada';
+    if (currentView === 'movies' || currentView === 'series') {
+        renderGridContent(currentView);
+    }
 }
