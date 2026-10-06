@@ -9,7 +9,7 @@ let selectedCategoryName = 'all';
 const DEFAULT_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
 
 window.addEventListener('DOMContentLoaded', () => {
-    // Limpa o cache antigo do navegador automaticamente ao abrir o app
+    // Limpa o cache antigo automaticamente ao abrir o app
     localStorage.removeItem('frajola_playlist');
     loadDefaultChannels();
 });
@@ -41,7 +41,6 @@ function switchView(viewName) {
         filterLiveChannels();
     } else if (viewName === 'movies' || viewName === 'series') {
         document.getElementById('view-grid').classList.add('active');
-        document.getElementById('gridTitle').innerText = viewName === 'movies' ? 'Filmes' : 'Séries';
         renderGridContent(viewName);
     }
 }
@@ -95,7 +94,7 @@ function parseM3U(data) {
             if (currentItem) {
                 currentItem.url = line;
 
-                // Evita estritamente a duplicação do mesmo canal/link
+                // Evita estritamente a duplicação do mesmo canal
                 const existingIndex = playlistData.findIndex(item => item.url === currentItem.url);
                 if (existingIndex !== -1) {
                     playlistData[existingIndex] = currentItem;
@@ -250,9 +249,8 @@ function toggleFavCurrent() {
 }
 
 function renderGridContent(type) {
-    const grid = document.getElementById('vodGrid');
-    grid.innerHTML = '';
-
+    const viewGrid = document.getElementById('view-grid');
+    
     const filtered = playlistData.filter(item => {
         const title = item.title.toLowerCase();
         const cat = item.category.toLowerCase();
@@ -262,29 +260,45 @@ function renderGridContent(type) {
     });
 
     if (filtered.length === 0) {
-        grid.innerHTML = '<div class="empty">Nenhum conteúdo encontrado para esta categoria.</div>';
+        viewGrid.innerHTML = `
+            <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2>${type === 'movies' ? 'Filmes' : 'Séries'}</h2>
+                <input type="text" id="gridSearchInput" placeholder="Buscar título..." oninput="filterGridContent()" style="padding: 6px 10px; background: #0f172a; border: 1px solid #1e293b; color: #fff; border-radius: 4px; font-size: 12px;">
+            </div>
+            <div class="empty">Nenhum conteúdo encontrado para esta categoria.</div>
+        `;
         return;
     }
 
-    filtered.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'vod-card';
-        card.innerHTML = `
+    let cardsHTML = filtered.map(item => `
+        <div class="vod-card" onclick="switchView('live'); playLiveStream(${JSON.stringify(item).replace(/"/g, '&quot;')}, null)">
             <img src="${item.logo || 'frajola.jpg'}" onerror="this.src='frajola.jpg'">
             <div class="info">${item.title}</div>
-        `;
-        card.onclick = () => {
-            switchView('live');
-            playLiveStream(item, null);
-        };
-        grid.appendChild(card);
-    });
+        </div>
+    `).join('');
+
+    viewGrid.innerHTML = `
+        <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2>${type === 'movies' ? 'Filmes' : 'Séries'}</h2>
+            <input type="text" id="gridSearchInput" placeholder="Buscar título..." oninput="filterGridContent()" style="padding: 6px 10px; background: #0f172a; border: 1px solid #1e293b; color: #fff; border-radius: 4px; font-size: 12px;">
+        </div>
+        <div class="vod-grid">
+            ${cardsHTML}
+        </div>
+    `;
 }
 
 function filterGridContent() {
     const query = document.getElementById('gridSearchInput').value.toLowerCase();
-    const type = document.getElementById('gridTitle').innerText === 'Filmes' ? 'movies' : 'series';
-    renderGridContent(type);
+    const cards = document.querySelectorAll('.vod-card');
+    cards.forEach(card => {
+        const title = card.querySelector('.info').innerText.toLowerCase();
+        if (title.includes(query)) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
 }
 
 function clearSavedList() {

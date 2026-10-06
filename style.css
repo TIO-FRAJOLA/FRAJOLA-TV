@@ -157,7 +157,7 @@ main {
     font-weight: 700;
 }
 
-/* Layout 3 Colunas (TV / PC / Telemóvel na Horizontal) */
+/* Layout 3 Colunas (TV ao Vivo) */
 .live-tv-container {
     display: grid;
     grid-template-columns: 220px 260px 1fr;
@@ -296,7 +296,74 @@ main {
     margin-top: 6px;
 }
 
-/* Responsive (Caso o telemóvel esteja em pé/Vertical) */
+/* --- GRID DE FILMES E SÉRIES --- */
+#view-grid {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.vod-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    gap: 15px !important;
+    padding-bottom: 40px !important;
+}
+
+.vod-card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.vod-card:hover {
+    transform: translateY(-4px);
+    border-color: #3b82f6;
+}
+
+.vod-card img {
+    width: 100% !important;
+    height: 180px !important;
+    max-height: 180px !important;
+    object-fit: cover !important;
+    background: #080c14;
+    display: block;
+}
+
+.vod-card .info {
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+.empty {
+    padding: 20px;
+    color: #64748b;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* Modal Dialog Styling */
+dialog#urlDialog {
+    background: #0f172a;
+    color: #fff;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 20px;
+    margin: auto;
+}
+
+/* Responsive (Celular) */
 @media (max-width: 768px) and (orientation: portrait) {
     .live-tv-container {
         display: flex;
