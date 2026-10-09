@@ -6,7 +6,7 @@
 }
 
 body {
-    background-color: #080c14;
+    background-color: #120303;
     color: #ffffff;
     display: flex;
     flex-direction: column;
@@ -15,101 +15,146 @@ body {
     overflow: hidden;
 }
 
+/* --- TELA DE LOGIN --- */
+.login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 2, 2, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.login-card {
+    background: #1a0505;
+    border: 1px solid #7f1d1d;
+    padding: 30px;
+    border-radius: 12px;
+    width: 320px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+.login-card h2 {
+    color: #ef4444;
+    margin-bottom: 5px;
+    font-size: 22px;
+}
+
+.login-card h2 b {
+    color: #fff;
+}
+
+.login-card p {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 20px;
+}
+
+.input-group {
+    margin-bottom: 12px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px;
+    background: #120303;
+    border: 1px solid #7f1d1d;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.btn-login-action {
+    width: 100%;
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+.btn-login-action:hover {
+    background: #ef4444;
+}
+
+.login-error {
+    color: #f87171;
+    font-size: 11px;
+    margin-top: 10px;
+}
+
 /* Header */
 header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 12px;
-    background-color: #0b111e;
-    border-bottom: 1px solid #1e293b;
-    height: 50px;
+    padding: 6px 15px;
+    background-color: #1a0505;
+    border-bottom: 2px solid #b91c1c;
+    height: 52px;
     flex-shrink: 0;
 }
 
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.brand img {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
 .brand span {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 800;
-    color: #3b82f6;
+    color: #ef4444;
 }
 
 .brand span b {
     color: #ffffff;
 }
 
-/* Top Navigation */
 .top-nav {
     display: flex;
-    gap: 6px;
+    gap: 4px;
 }
 
 .nav-btn {
     background: none;
     border: none;
-    color: #94a3b8;
-    font-size: 13px;
-    font-weight: 600;
+    color: #d1d5db;
+    font-size: 12px;
+    font-weight: 700;
     cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
 }
 
 .nav-btn.active, .nav-btn:hover {
-    color: #f59e0b;
-    background: #1e293b;
+    color: #ffffff;
+    background: #b91c1c;
 }
 
 .actions {
     display: flex;
     align-items: center;
-    gap: 6px;
 }
 
-#status {
-    font-size: 11px;
-    color: #94a3b8;
-}
-
-button, .filelabel {
-    background: #1e293b;
-    color: #e2e8f0;
-    border: 1px solid #334155;
-    padding: 5px 8px;
+.btn-logout {
+    background: #2d1212;
+    color: #fca5a5;
+    border: 1px solid #7f1d1d;
+    padding: 5px 10px;
     border-radius: 6px;
     font-size: 11px;
-    font-weight: 600;
     cursor: pointer;
 }
 
-button:hover, .filelabel:hover {
-    background: #334155;
-    color: #ffffff;
+.btn-logout:hover {
+    background: #7f1d1d;
+    color: #fff;
 }
 
-.btn-connect {
-    background: #2563eb !important;
-    border-color: #3b82f6 !important;
-    color: #ffffff !important;
-}
-
-.filelabel input {
-    display: none;
-}
-
-/* Main Container */
+/* Painéis de Conteúdo */
 main {
     flex: 1;
     position: relative;
@@ -126,50 +171,54 @@ main {
     display: block;
 }
 
-/* Home Panel */
 #view-home {
-    padding: 20px;
+    padding: 25px;
     overflow-y: auto;
 }
 
 .hero-cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 15px;
 }
 
 .hero-card {
-    background: linear-gradient(145deg, #0f172a, #1e293b);
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 30px 15px;
+    background: linear-gradient(145deg, #1f0808, #2d1212);
+    border: 1px solid #7f1d1d;
+    border-radius: 10px;
+    padding: 35px 15px;
     text-align: center;
     cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.hero-card:hover {
+    transform: translateY(-4px);
+    border-color: #ef4444;
 }
 
 .hero-card .icon {
-    font-size: 36px;
-    margin-bottom: 8px;
+    font-size: 38px;
+    margin-bottom: 10px;
 }
 
 .hero-card .title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
+    color: #f3f4f6;
 }
 
-/* Layout 3 Colunas (TV ao Vivo) */
 .live-tv-container {
     display: grid;
     grid-template-columns: 220px 260px 1fr;
     height: 100%;
     width: 100%;
-    background-color: #080c14;
+    background-color: #120303;
 }
 
-/* Coluna 1: Categorias */
 .col-categories {
-    background: #0b111e;
-    border-right: 1px solid #1e293b;
+    background: #1a0505;
+    border-right: 1px solid #7f1d1d;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -177,14 +226,14 @@ main {
 }
 
 .col-categories .search-box {
-    padding: 6px;
-    border-bottom: 1px solid #1e293b;
+    padding: 8px;
+    border-bottom: 1px solid #7f1d1d;
 }
 
 .col-categories input {
     width: 100%;
-    background: #0f172a;
-    border: 1px solid #1e293b;
+    background: #120303;
+    border: 1px solid #7f1d1d;
     color: #fff;
     padding: 6px 8px;
     border-radius: 4px;
@@ -201,32 +250,31 @@ main {
     padding: 8px 10px;
     font-size: 12px;
     font-weight: 600;
-    color: #cbd5e1;
+    color: #d1d5db;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #0f172a;
+    border-bottom: 1px solid #1f0808;
 }
 
 .cat-list li.active {
-    background: #1e293b;
-    color: #f59e0b;
-    border-left: 3px solid #f59e0b;
+    background: #b91c1c;
+    color: #ffffff;
+    border-left: 4px solid #f87171;
 }
 
 .cat-list .badge {
-    background: #0f172a;
+    background: #120303;
     padding: 2px 6px;
     border-radius: 10px;
     font-size: 10px;
-    color: #f59e0b;
+    color: #fca5a5;
 }
 
-/* Coluna 2: Canais */
 .col-channels {
-    background: #0d1527;
-    border-right: 1px solid #1e293b;
+    background: #170404;
+    border-right: 1px solid #7f1d1d;
     height: 100%;
     overflow-y: auto;
 }
@@ -239,21 +287,20 @@ main {
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    border-bottom: 1px solid #172033;
+    border-bottom: 1px solid #230606;
 }
 
 .channel-item.active {
-    background: #1e293b;
-    color: #f59e0b;
+    background: #b91c1c;
+    color: #ffffff;
 }
 
 .channel-num {
-    color: #64748b;
+    color: #fca5a5;
     font-size: 10px;
     min-width: 20px;
 }
 
-/* Coluna 3: Player e Detalhes */
 .col-player {
     display: flex;
     flex-direction: column;
@@ -282,8 +329,8 @@ main {
 
 .epg-info {
     padding: 10px 15px;
-    background: #0b111e;
-    border-top: 1px solid #1e293b;
+    background: #1a0505;
+    border-top: 1px solid #7f1d1d;
     min-height: 80px;
 }
 
@@ -296,7 +343,22 @@ main {
     margin-top: 6px;
 }
 
-/* --- GRID DE FILMES E SÉRIES --- */
+button {
+    background: #2d1212;
+    color: #f3f4f6;
+    border: 1px solid #7f1d1d;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #7f1d1d;
+    color: #ffffff;
+}
+
 #view-grid {
     padding: 20px;
     overflow-y: auto;
@@ -311,27 +373,27 @@ main {
 }
 
 .vod-card {
-    background: #0f172a;
-    border: 1px solid #1e293b;
+    background: #1f0808;
+    border: 1px solid #7f1d1d;
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.2s, border-color 0.2s;
+    transition: transform 0.2s;
     display: flex;
     flex-direction: column;
 }
 
 .vod-card:hover {
     transform: translateY(-4px);
-    border-color: #3b82f6;
+    border-color: #ef4444;
 }
 
 .vod-card img {
     width: 100% !important;
-    height: 180px !important;
-    max-height: 180px !important;
+    height: 190px !important;
+    max-height: 190px !important;
     object-fit: cover !important;
-    background: #080c14;
+    background: #120303;
     display: block;
 }
 
@@ -339,7 +401,7 @@ main {
     padding: 8px;
     font-size: 11px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: #f3f4f6;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -348,41 +410,19 @@ main {
 
 .empty {
     padding: 20px;
-    color: #64748b;
+    color: #fca5a5;
     font-size: 13px;
     text-align: center;
 }
 
-/* Modal Dialog Styling */
-dialog#urlDialog {
-    background: #0f172a;
-    color: #fff;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 20px;
-    margin: auto;
-}
-
-/* Responsive (Celular) */
 @media (max-width: 768px) and (orientation: portrait) {
     .live-tv-container {
         display: flex;
         flex-direction: column;
         overflow-y: auto;
     }
-
-    .col-player {
-        height: 240px;
-        flex-shrink: 0;
-    }
-
-    .col-categories {
-        height: 150px;
-        flex-shrink: 0;
-    }
-
-    .col-channels {
-        height: 250px;
-        flex-shrink: 0;
-    }
+    .col-player { height: 240px; flex-shrink: 0; }
+    .col-categories { height: 150px; flex-shrink: 0; }
+    .col-channels { height: 250px; flex-shrink: 0; }
+    .hero-cards { grid-template-columns: repeat(2, 1fr); }
 }

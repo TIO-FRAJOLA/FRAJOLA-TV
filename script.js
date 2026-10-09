@@ -1,3 +1,17 @@
+// CONFIGURAÇÃO DO FIREBASE (Substitua com os dados do seu projeto gratuito no Firebase)
+const firebaseConfig = {
+    apiKey: "SUA_API_KEY_AQUI",
+    authDomain: "seu-projeto.firebaseapp.com",
+    projectId: "seu-projeto",
+    storageBucket: "seu-projeto.appspot.com",
+    messagingSenderId: "seu-id",
+    appId: "seu-app-id"
+};
+
+// Inicializa o Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
 let playlistData = [];
 let categories = {};
 let favoriteChannels = JSON.parse(localStorage.getItem('frajola_favorites') || '[]');
@@ -5,13 +19,47 @@ let currentSelectedChannel = null;
 let currentView = 'home';
 let selectedCategoryName = 'all';
 
-window.addEventListener('DOMContentLoaded', () => {
-    // Carrega a playlist do utilizador gravada no navegador, se existir
-    const savedPlaylist = localStorage.getItem('frajola_custom_playlist');
-    if (savedPlaylist) {
-        parseM3U(savedPlaylist);
+// URL M3U Protegida (Carregada estritamente por fora do app)
+const OFFICIAL_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
+
+// Vigia o estado da sessão do utilizador
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        // Usuário logado: esconde a tela de login e carrega os canais
+        document.getElementById('loginOverlay').style.display = 'none';
+        loadOfficialPlaylist();
+    } else {
+        // Usuário deslogado: mostra a tela de login
+        document.getElementById('loginOverlay').style.display = 'flex';
     }
 });
+
+function fazerLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const senha = document.getElementById('loginPassword').value.trim();
+    const erroEl = document.getElementById('loginError');
+
+    if (!email || !senha) {
+        erroEl.innerText = 'Preencha todos os campos.';
+        return;
+    }
+
+    auth.signInWithEmailAndPassword(email, senha)
+        .catch((error) => {
+            erroEl.innerText = 'Dados inválidos ou conta expirada.';
+        });
+}
+
+function fazerLogout() {
+    auth.signOut();
+}
+
+function loadOfficialPlaylist() {
+    fetch(OFFICIAL_PLAYLIST_URL)
+        .then(res => res.text())
+        .then(data => parseM3U(data))
+        .catch(err => console.error('Erro ao carregar conteúdo', err));
+}
 
 function switchView(viewName) {
     currentView = viewName;
@@ -27,41 +75,10 @@ function switchView(viewName) {
         document.getElementById('view-live').classList.add('active');
         renderCategories();
         filterLiveChannels();
-    } else if (viewName === 'movies' || viewName === 'series') {
+    } else {
         document.getElementById('view-grid').classList.add('active');
         renderGridContent(viewName);
     }
-}
-
-document.getElementById('file').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) { 
-        const content = e.target.result;
-        localStorage.setItem('frajola_custom_playlist', content);
-        parseM3U(content); 
-    };
-    reader.readAsText(file);
-});
-
-function showUrl() { document.getElementById('urlDialog').showModal(); }
-
-function loadUrl() {
-    const url = document.getElementById('url').value.trim();
-    if (!url) return;
-    document.getElementById('status').innerText = '● A carregar URL...';
-    fetch(url)
-        .then(res => res.text())
-        .then(data => {
-            localStorage.setItem('frajola_custom_playlist', data);
-            parseM3U(data);
-            document.getElementById('urlDialog').close();
-        })
-        .catch(err => {
-            alert('Erro ao carregar a URL da playlist M3U.');
-            document.getElementById('status').innerText = '● Erro ao carregar';
-        });
 }
 
 function parseM3U(data) {
@@ -98,9 +115,7 @@ function parseM3U(data) {
     });
 
     processCategories();
-    updateStatus();
-    
-    if (currentView === 'movies' || currentView === 'series') {
+    if (currentView !== 'home' && currentView !== 'live') {
         renderGridContent(currentView);
     } else if (currentView === 'live') {
         renderCategories();
@@ -115,12 +130,6 @@ function processCategories() {
         if (!categories[cat]) categories[cat] = [];
         categories[cat].push(item);
     });
-}
-
-function updateStatus() {
-    document.getElementById('status').innerText = '● Conectado (' + playlistData.length + ' itens)';
-    document.getElementById('cat-count-all').innerText = playlistData.length;
-    document.getElementById('cat-count-fav').innerText = favoriteChannels.length;
 }
 
 function renderCategories() {
@@ -174,7 +183,7 @@ function renderChannelList(channels) {
     container.innerHTML = '';
 
     if (channels.length === 0) {
-        container.innerHTML = '<div class="empty">Nenhum item encontrado nesta categoria.</div>';
+        container.innerHTML = '<div class="empty">Nenhum item encontrado.</div>';
         return;
     }
 
@@ -247,32 +256,33 @@ function toggleFavCurrent() {
 
 function renderGridContent(type) {
     const viewGrid = document.getElementById('view-grid');
-
-    if (playlistData.length === 0) {
-        viewGrid.innerHTML = `
-            <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2>${type === 'movies' ? 'Filmes' : 'Séries'}</h2>
-            </div>
-            <div class="empty">Nenhuma lista M3U carregada. Adicione os seus filmes ou séries clicando em "🔗 URL M3U" ou "📂 Ficheiro M3U" no topo.</div>
-        `;
-        return;
-    }
+    const titles = {
+        'destaques': 'Destaques',
+        'movies': 'Filmes',
+        'series': 'Séries',
+        'kids': 'Kids',
+        'anime': 'Anime'
+    };
 
     const filtered = playlistData.filter(item => {
         const title = item.title.toLowerCase();
         const cat = item.category.toLowerCase();
-        if (type === 'movies') return cat.includes('movie') || cat.includes('filme') || cat.includes('vod') || title.includes('filme');
-        if (type === 'series') return cat.includes('serie') || cat.includes('série') || title.includes('s01') || title.includes('s02');
-        return true;
+        
+        if (type === 'destaques') return true;
+        if (type === 'movies') return cat.includes('movie') || cat.includes('filme') || cat.includes('vod');
+        if (type === 'series') return cat.includes('serie') || cat.includes('série') || title.includes('s01');
+        if (type === 'kids') return cat.includes('infantil') || cat.includes('kids') || cat.includes('desenho');
+        if (type === 'anime') return cat.includes('anime') || title.includes('naruto') || title.includes('dragon ball');
+        return false;
     });
 
     if (filtered.length === 0) {
         viewGrid.innerHTML = `
             <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2>${type === 'movies' ? 'Filmes' : 'Séries'}</h2>
-                <input type="text" id="gridSearchInput" placeholder="Buscar título..." oninput="filterGridContent()" style="padding: 6px 10px; background: #0f172a; border: 1px solid #1e293b; color: #fff; border-radius: 4px; font-size: 12px;">
+                <h2>${titles[type]}</h2>
+                <input type="text" id="gridSearchInput" placeholder="Buscar..." oninput="filterGridContent()" style="padding: 6px 10px; background: #120303; border: 1px solid #7f1d1d; color: #fff; border-radius: 4px; font-size: 12px;">
             </div>
-            <div class="empty">Nenhum ${type === 'movies' ? 'filme' : 'série'} encontrado na lista atual.</div>
+            <div class="empty">Nenhum item encontrado nesta categoria.</div>
         `;
         return;
     }
@@ -286,8 +296,8 @@ function renderGridContent(type) {
 
     viewGrid.innerHTML = `
         <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h2>${type === 'movies' ? 'Filmes' : 'Séries'}</h2>
-            <input type="text" id="gridSearchInput" placeholder="Buscar título..." oninput="filterGridContent()" style="padding: 6px 10px; background: #0f172a; border: 1px solid #1e293b; color: #fff; border-radius: 4px; font-size: 12px;">
+            <h2>${titles[type]}</h2>
+            <input type="text" id="gridSearchInput" placeholder="Buscar..." oninput="filterGridContent()" style="padding: 6px 10px; background: #120303; border: 1px solid #7f1d1d; color: #fff; border-radius: 4px; font-size: 12px;">
         </div>
         <div class="vod-grid">
             ${cardsHTML}
@@ -296,26 +306,20 @@ function renderGridContent(type) {
 }
 
 function filterGridContent() {
-    const query = document.getElementById('gridSearchInput').value.toLowerCase();
+    const queryInput = document.getElementById('gridSearchInput');
+    if (!queryInput) return;
+    const query = queryInput.value.toLowerCase();
     const cards = document.querySelectorAll('.vod-card');
+    
     cards.forEach(card => {
-        const title = card.querySelector('.info').innerText.toLowerCase();
-        if (title.includes(query)) {
-            card.style.display = 'flex';
-        } else {
-            card.style.display = 'none';
+        const titleEl = card.querySelector('.info');
+        if (titleEl) {
+            const title = titleEl.innerText.toLowerCase();
+            if (title.includes(query)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
         }
     });
-}
-
-function clearSavedList() {
-    playlistData = [];
-    categories = {};
-    localStorage.removeItem('frajola_custom_playlist');
-    renderCategories();
-    renderChannelList([]);
-    document.getElementById('status').innerText = '● Nenhuma lista carregada';
-    if (currentView === 'movies' || currentView === 'series') {
-        renderGridContent(currentView);
-    }
 }
