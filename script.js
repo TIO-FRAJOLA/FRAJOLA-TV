@@ -134,24 +134,16 @@ function fazerLogout() {
 }
 
 function loadOfficialPlaylist() {
-    // Usa uma API proxy pública ou requisição direta compatível com Electron
     fetch(OFFICIAL_PLAYLIST_URL)
-        .then(res => {
-            if (!res.ok) throw new Error('Erro na resposta do servidor');
-            return res.text();
-        })
+        .then(res => res.text())
         .then(data => {
-            if (!data || data.trim() === '') {
-                console.error("A lista M3U veio vazia.");
-                return;
+            if (data && data.length > 10) {
+                parseM3U(data);
+            } else {
+                console.error("A lista M3U veio vazia ou inválida.");
             }
-            parseM3U(data);
         })
-        .catch(err => {
-            console.error('Erro ao carregar conteúdo do fornecedor:', err);
-            // Fallback caso o fetch seja bloqueado por HTTP/CORS no Electron
-            alert('Aviso: O Electron bloqueou o pedido HTTP direto. Verifique as permissões de rede.');
-        });
+        .catch(err => console.error('Erro ao carregar conteúdo do fornecedor:', err));
 }
 
 function switchView(viewName) {
