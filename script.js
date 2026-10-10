@@ -1,16 +1,16 @@
-// CONFIGURAÇÃO DO FIREBASE (Substitua com os dados do seu projeto gratuito no Firebase)
+// CONFIGURAÇÃO DO FIREBASE (Lembre-se de colocar as suas chaves reais aqui)
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY_AQUI",
-    authDomain: "seu-projeto.firebaseapp.com",
-    projectId: "seu-projeto",
-    storageBucket: "seu-projeto.appspot.com",
-    messagingSenderId: "seu-id",
-    appId: "seu-app-id"
+    apiKey: "AIzaSyDrcGUXdvxNv5_NI-M0J0hkFUVD5cA094s",
+    authDomain: "frajola-tv.firebaseapp.com",
+    projectId: "frajola-tv",
+    storageBucket: "frajola-tv.firebasestorage.app",
+    messagingSenderId: "489352889234",
+    appId: "1:409362889234:web:a9c2cc4a6scbccf41a1cb"
 };
 
-// Inicializa o Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const db = firebase.firestore();
 
 let playlistData = [];
 let categories = {};
@@ -18,37 +18,79 @@ let favoriteChannels = JSON.parse(localStorage.getItem('frajola_favorites') || '
 let currentSelectedChannel = null;
 let currentView = 'home';
 let selectedCategoryName = 'all';
+let isRegisterMode = false;
 
-// URL M3U Protegida (Carregada estritamente por fora do app)
 const OFFICIAL_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
 
-// Vigia o estado da sessão do utilizador
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        // Usuário logado: esconde a tela de login e carrega os canais
-        document.getElementById('loginOverlay').style.display = 'none';
-        loadOfficialPlaylist();
-    } else {
-        // Usuário deslogado: mostra a tela de login
-        document.getElementById('loginOverlay').style.display = 'flex';
-    }
-});
+function alternarModoAuth() {
+    isRegisterMode = !isRegisterMode;
+    document.getElementById('authSubtitle').innerText = isRegisterMode ? 'Crie a sua nova conta' : 'Entre com a sua conta para acessar';
+    document.getElementById('authBtn').innerText = isRegisterMode ? 'CRIAR CONTA' : 'ACESSAR CONTA';
+    document.getElementById('authToggleText').innerText = isRegisterMode ? 'Já tem conta? Fazer login' : 'Não tem conta? Criar agora';
+    document.getElementById('authError').innerText = '';
+}
 
-function fazerLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const senha = document.getElementById('loginPassword').value.trim();
-    const erroEl = document.getElementById('loginError');
+function executarAcaoAuth() {
+    const email = document.getElementById('authEmail').value.trim();
+    const senha = document.getElementById('authPassword').value.trim();
+    const erroEl = document.getElementById('authError');
 
     if (!email || !senha) {
         erroEl.innerText = 'Preencha todos os campos.';
         return;
     }
 
-    auth.signInWithEmailAndPassword(email, senha)
-        .catch((error) => {
-            erroEl.innerText = 'Dados inválidos ou conta expirada.';
-        });
+    erroEl.innerText = 'A processar...';
+
+    if (isRegisterMode) {
+        auth.createUserWithEmailAndPassword(email, senha)
+            .then((userCredential) => {
+                const uid = userCredential.user.uid;
+                return db.collection('usuarios').doc(uid).set({
+                    email: email,
+                    ativo: true,
+                    criadoEm: new Date()
+                });
+            })
+            .then(() => {
+                erroEl.innerText = '';
+            })
+            .catch((error) => {
+                console.error(error);
+                erroEl.innerText = 'Erro: ' + error.message;
+            });
+    } else {
+        auth.signInWithEmailAndPassword(email, senha)
+            .then(() => {
+                erroEl.innerText = '';
+            })
+            .catch((error) => {
+                console.error(error);
+                erroEl.innerText = 'E-mail ou senha incorretos.';
+            });
+    }
 }
+
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        db.collection('usuarios').doc(user.uid).get().then((doc) => {
+            if (doc.exists && doc.data().ativo === true) {
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('paymentOverlay').style.display = 'none';
+                loadOfficialPlaylist();
+            } else {
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('paymentOverlay').style.display = 'flex';
+            }
+        }).catch(() => {
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('paymentOverlay').style.display = 'flex';
+        });
+    } else {
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('paymentOverlay').style.display = 'none';
+    }
+});
 
 function fazerLogout() {
     auth.signOut();
@@ -310,7 +352,6 @@ function filterGridContent() {
     if (!queryInput) return;
     const query = queryInput.value.toLowerCase();
     const cards = document.querySelectorAll('.vod-card');
-    
     cards.forEach(card => {
         const titleEl = card.querySelector('.info');
         if (titleEl) {

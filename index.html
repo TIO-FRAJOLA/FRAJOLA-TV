@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Frajola TV Player</title>
 
-    <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#b91c1c">
     <meta name="mobile-web-app-capable" content="yes">
@@ -14,36 +13,50 @@
     <link rel="icon" type="image/jpeg" href="frajola.jpg">
     <link rel="apple-touch-icon" href="frajola.jpg">
 
-    <!-- CSS Externo e HLS.js -->
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-    <!-- Firebase SDK (Para gerenciar contas e planos) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-    <!-- TELA DE LOGIN (Inicia visível se não estiver logado) -->
-    <div id="loginOverlay" class="login-overlay">
+    <!-- TELA DE LOGIN / CADASTRO -->
+    <div id="authOverlay" class="login-overlay">
         <div class="login-card">
             <h2>Frajola <b>TV</b></h2>
-            <p>Entre com a sua conta para acessar o sistema</p>
+            <p id="authSubtitle">Entre com a sua conta para acessar</p>
             
             <div class="input-group">
-                <input type="email" id="loginEmail" placeholder="E-mail ou Usuário">
+                <input type="email" id="authEmail" placeholder="E-mail">
             </div>
             <div class="input-group">
-                <input type="password" id="loginPassword" placeholder="Senha">
+                <input type="password" id="authPassword" placeholder="Senha">
             </div>
             
-            <button class="btn-login-action" onclick="fazerLogin()">ACESSAR CONTA</button>
-            <p id="loginError" class="login-error"></p>
+            <button id="authBtn" class="btn-login-action" onclick="executarAcaoAuth()">ACESSAR CONTA</button>
+            <p id="authToggleText" class="toggle-auth" onclick="alternarModoAuth()">Não tem conta? Criar agora</p>
+            <p id="authError" class="login-error"></p>
         </div>
     </div>
 
-    <!-- Header / Barra Superior (Só aparece após o login) -->
+    <!-- TELA DE PAGAMENTO / PLANO EXPIRADO -->
+    <div id="paymentOverlay" class="login-overlay" style="display: none;">
+        <div class="login-card" style="width: 360px;">
+            <h2>⚠️ Plano Expirado</h2>
+            <p style="margin-top: 10px; color: #fca5a5;">O seu período de acesso terminou ou a sua assinatura precisa ser ativada.</p>
+            <div style="background: #120303; padding: 12px; border-radius: 6px; margin: 15px 0; border: 1px solid #7f1d1d;">
+                <p style="font-size: 11px; color: #fff; margin-bottom: 5px;">Chave Pix para Renovação:</p>
+                <code style="color: #ef4444; font-size: 12px; word-break: break-all;">sua-chave-pix@exemplo.com</code>
+            </div>
+            <p style="font-size: 11px; margin-bottom: 15px;">Após o pagamento, envie o comprovante para liberar o seu acesso instantaneamente.</p>
+            <button class="btn-login-action" onclick="fazerLogout()">Sair / Trocar Conta</button>
+        </div>
+    </div>
+
+    <!-- Header / Barra Superior -->
     <header>
         <div class="brand">
             <span>Frajola <b>TV</b></span>
