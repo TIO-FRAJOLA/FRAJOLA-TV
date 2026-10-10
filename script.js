@@ -73,6 +73,13 @@ function executarAcaoAuth() {
 
 auth.onAuthStateChanged((user) => {
     if (user) {
+        if (user.email === 'matheus.adrih@gmail.com') {
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('paymentOverlay').style.display = 'none';
+            loadOfficialPlaylist();
+            return;
+        }
+
         db.collection('usuarios').doc(user.uid).get().then((doc) => {
             if (doc.exists && doc.data().ativo === true) {
                 document.getElementById('authOverlay').style.display = 'none';
