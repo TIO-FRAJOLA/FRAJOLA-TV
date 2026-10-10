@@ -1,6 +1,6 @@
 // CONFIGURAÇÃO DO FIREBASE
 const firebaseConfig = {
-    apiKey: "AIzaSyDrcGUXdvxNv5_NI-M0J0hkFUVD5cA094s",
+    apiKey: "AIzaSyO...", // Substitui pela tua chave real do Firebase se necessário
     authDomain: "frajola-tv.firebaseapp.com",
     projectId: "frajola-tv",
     storageBucket: "frajola-tv.firebasestorage.app",
@@ -22,7 +22,8 @@ let currentView = 'home';
 let selectedCategoryName = 'all';
 let isRegisterMode = false;
 
-const OFFICIAL_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
+// URL DA LISTA XTREAM CODES DO FORNECEDOR
+const XTREAM_URL = 'http://digsrv.me/get.php?username=49175447&password=30117803&type=m3u';
 
 // Alterna a interface da modal entre Login e Cadastro
 function alternarModoAuth() {
@@ -52,7 +53,7 @@ function executarAcaoAuth() {
                 const uid = userCredential.user.uid;
                 return db.collection('usuarios').doc(uid).set({
                     email: email,
-                    ativo: true, // Define como true para liberar acesso imediato ao cadastrar
+                    ativo: true,
                     criadoEm: new Date()
                 });
             })
@@ -75,11 +76,10 @@ function executarAcaoAuth() {
     }
 }
 
-// MANTÉM A SESSÃO E VERIFICA O ACESSO NO FIRESTORE (VERSÃO BLINDADA)
+// VERIFICAÇÃO DE ACESSO NO FIRESTORE COM SEGURANÇA
 auth.onAuthStateChanged(async (user) => {
     let finished = false;
     
-    // Timeout de segurança: se o Firebase demorar mais de 4 segundos a responder, destrava a interface
     const safetyTimeout = setTimeout(() => {
         if (!finished) {
             console.warn("Aviso: Verificação demorou muito, liberando interface por segurança.");
@@ -134,10 +134,10 @@ function fazerLogout() {
 }
 
 function loadOfficialPlaylist() {
-    fetch(OFFICIAL_PLAYLIST_URL)
+    fetch(XTREAM_URL)
         .then(res => res.text())
         .then(data => parseM3U(data))
-        .catch(err => console.error('Erro ao carregar conteúdo', err));
+        .catch(err => console.error('Erro ao carregar conteúdo do fornecedor', err));
 }
 
 function switchView(viewName) {
