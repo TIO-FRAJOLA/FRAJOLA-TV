@@ -1,6 +1,6 @@
 // CONFIGURAÇÃO DO FIREBASE
 const firebaseConfig = {
-    apiKey: "AIzaSyO...", // Substitui pela tua chave real do Firebase se necessário
+    apiKey: "AIzaSyDrcGUXdvxNv5_NI-M0J0hkFUVD5cA094s",
     authDomain: "frajola-tv.firebaseapp.com",
     projectId: "frajola-tv",
     storageBucket: "frajola-tv.firebasestorage.app",
@@ -22,8 +22,7 @@ let currentView = 'home';
 let selectedCategoryName = 'all';
 let isRegisterMode = false;
 
-// URL DA LISTA XTREAM CODES DO FORNECEDOR
-const XTREAM_URL = 'http://digsrv.me/get.php?username=49175447&password=30117803&type=m3u';
+const OFFICIAL_PLAYLIST_URL = 'http://digsrv.me/get.php?username=49175447&password=30117803&type=m3u';
 
 // Alterna a interface da modal entre Login e Cadastro
 function alternarModoAuth() {
@@ -53,7 +52,7 @@ function executarAcaoAuth() {
                 const uid = userCredential.user.uid;
                 return db.collection('usuarios').doc(uid).set({
                     email: email,
-                    ativo: true,
+                    ativo: true, // Define como true para liberar acesso imediato ao cadastrar
                     criadoEm: new Date()
                 });
             })
@@ -76,10 +75,11 @@ function executarAcaoAuth() {
     }
 }
 
-// VERIFICAÇÃO DE ACESSO NO FIRESTORE COM SEGURANÇA
+// MANTÉM A SESSÃO E VERIFICA O ACESSO NO FIRESTORE (VERSÃO BLINDADA)
 auth.onAuthStateChanged(async (user) => {
     let finished = false;
     
+    // Timeout de segurança: se o Firebase demorar mais de 4 segundos a responder, destrava a interface
     const safetyTimeout = setTimeout(() => {
         if (!finished) {
             console.warn("Aviso: Verificação demorou muito, liberando interface por segurança.");
@@ -91,7 +91,7 @@ auth.onAuthStateChanged(async (user) => {
     if (user) {
         try {
             // SE FOR O TEU E-MAIL PRINCIPAL, LIBERA O ACESSO DIRETO
-            if (user.email === 'tio.frajola@gmail.com') {
+            if (user.email === 'matheus.adrih@gmail.com') {
                 finished = true;
                 clearTimeout(safetyTimeout);
                 document.getElementById('authOverlay').style.display = 'none';
@@ -134,10 +134,24 @@ function fazerLogout() {
 }
 
 function loadOfficialPlaylist() {
-    fetch(XTREAM_URL)
-        .then(res => res.text())
-        .then(data => parseM3U(data))
-        .catch(err => console.error('Erro ao carregar conteúdo do fornecedor', err));
+    // Usa uma API proxy pública ou requisição direta compatível com Electron
+    fetch(OFFICIAL_PLAYLIST_URL)
+        .then(res => {
+            if (!res.ok) throw new Error('Erro na resposta do servidor');
+            return res.text();
+        })
+        .then(data => {
+            if (!data || data.trim() === '') {
+                console.error("A lista M3U veio vazia.");
+                return;
+            }
+            parseM3U(data);
+        })
+        .catch(err => {
+            console.error('Erro ao carregar conteúdo do fornecedor:', err);
+            // Fallback caso o fetch seja bloqueado por HTTP/CORS no Electron
+            alert('Aviso: O Electron bloqueou o pedido HTTP direto. Verifique as permissões de rede.');
+        });
 }
 
 function switchView(viewName) {
