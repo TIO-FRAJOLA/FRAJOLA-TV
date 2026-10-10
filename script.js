@@ -1,4 +1,4 @@
-// CONFIGURAÇÃO DO FIREBASE (Lembre-se de colocar as suas chaves reais aqui)
+// CONFIGURAÇÃO DO FIREBASE
 const firebaseConfig = {
     apiKey: "AIzaSyDrcGUXdvxNv5_NI-M0J0hkFUVD5cA094s",
     authDomain: "frajola-tv.firebaseapp.com",
@@ -8,10 +8,12 @@ const firebaseConfig = {
     appId: "1:409362889234:web:a9c2cc4a6scbccf41a1cb"
 };
 
+// Inicialização das instâncias do Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Variáveis globais de estado
 let playlistData = [];
 let categories = {};
 let favoriteChannels = JSON.parse(localStorage.getItem('frajola_favorites') || '[]');
@@ -22,6 +24,7 @@ let isRegisterMode = false;
 
 const OFFICIAL_PLAYLIST_URL = 'https://iptv-org.github.io/iptv/countries/br.m3u';
 
+// Alterna a interface da modal entre Login e Cadastro
 function alternarModoAuth() {
     isRegisterMode = !isRegisterMode;
     document.getElementById('authSubtitle').innerText = isRegisterMode ? 'Crie a sua nova conta' : 'Entre com a sua conta para acessar';
@@ -30,6 +33,7 @@ function alternarModoAuth() {
     document.getElementById('authError').innerText = '';
 }
 
+// Processa o Login ou o Cadastro de utilizadores
 function executarAcaoAuth() {
     const email = document.getElementById('authEmail').value.trim();
     const senha = document.getElementById('authPassword').value.trim();
@@ -48,7 +52,7 @@ function executarAcaoAuth() {
                 const uid = userCredential.user.uid;
                 return db.collection('usuarios').doc(uid).set({
                     email: email,
-                    ativo: true,
+                    ativo: true, // Define como true para liberar acesso imediato ao cadastrar
                     criadoEm: new Date()
                 });
             })
@@ -71,16 +75,37 @@ function executarAcaoAuth() {
     }
 }
 
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        if (user.email === 'matheus.adrih@gmail.com') {
-            document.getElementById('authOverlay').style.display = 'none';
+// MANTÉM A SESSÃO E VERIFICA O ACESSO NO FIRESTORE (VERSÃO BLINDADA)
+auth.onAuthStateChanged(async (user) => {
+    let finished = false;
+    
+    // Timeout de segurança: se o Firebase demorar mais de 4 segundos a responder, destrava a interface
+    const safetyTimeout = setTimeout(() => {
+        if (!finished) {
+            console.warn("Aviso: Verificação demorou muito, liberando interface por segurança.");
+            document.getElementById('authOverlay').style.display = 'flex';
             document.getElementById('paymentOverlay').style.display = 'none';
-            loadOfficialPlaylist();
-            return;
         }
+    }, 4000);
 
-        db.collection('usuarios').doc(user.uid).get().then((doc) => {
+    if (user) {
+        try {
+            // SE FOR O TEU E-MAIL PRINCIPAL, LIBERA O ACESSO DIRETO
+            if (user.email === 'tio.frajola@gmail.com') {
+                finished = true;
+                clearTimeout(safetyTimeout);
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('paymentOverlay').style.display = 'none';
+                loadOfficialPlaylist();
+                return;
+            }
+
+            const docRef = db.collection('usuarios').doc(user.uid);
+            const doc = await docRef.get();
+
+            finished = true;
+            clearTimeout(safetyTimeout);
+
             if (doc.exists && doc.data().ativo === true) {
                 document.getElementById('authOverlay').style.display = 'none';
                 document.getElementById('paymentOverlay').style.display = 'none';
@@ -89,11 +114,16 @@ auth.onAuthStateChanged((user) => {
                 document.getElementById('authOverlay').style.display = 'none';
                 document.getElementById('paymentOverlay').style.display = 'flex';
             }
-        }).catch(() => {
+        } catch (error) {
+            finished = true;
+            clearTimeout(safetyTimeout);
+            console.error("Erro ao verificar utilizador no Firestore:", error);
             document.getElementById('authOverlay').style.display = 'none';
             document.getElementById('paymentOverlay').style.display = 'flex';
-        });
+        }
     } else {
+        finished = true;
+        clearTimeout(safetyTimeout);
         document.getElementById('authOverlay').style.display = 'flex';
         document.getElementById('paymentOverlay').style.display = 'none';
     }
