@@ -13,6 +13,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Módulo nativo do Node.js para requisições HTTP sem bloqueios de CORS/Electron
+const http = require('http');
+
 // Variáveis globais de estado
 let playlistData = [];
 let categories = {};
@@ -91,7 +94,7 @@ auth.onAuthStateChanged(async (user) => {
     if (user) {
         try {
             // SE FOR O TEU E-MAIL PRINCIPAL, LIBERA O ACESSO DIRETO
-            if (user.email === 'matheus.adrih@gmail.com') {
+            if (user.email === 'matheus.adrih@gmail.com' || user.email === 'tio.frajola@gmail.com') {
                 finished = true;
                 clearTimeout(safetyTimeout);
                 document.getElementById('authOverlay').style.display = 'none';
@@ -134,16 +137,21 @@ function fazerLogout() {
 }
 
 function loadOfficialPlaylist() {
-    fetch(OFFICIAL_PLAYLIST_URL)
-        .then(res => res.text())
-        .then(data => {
+    http.get(OFFICIAL_PLAYLIST_URL, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+            data += chunk;
+        });
+        res.on('end', () => {
             if (data && data.length > 10) {
                 parseM3U(data);
             } else {
                 console.error("A lista M3U veio vazia ou inválida.");
             }
-        })
-        .catch(err => console.error('Erro ao carregar conteúdo do fornecedor:', err));
+        });
+    }).on('error', (err) => {
+        console.error('Erro ao carregar conteúdo do fornecedor:', err);
+    });
 }
 
 function switchView(viewName) {
