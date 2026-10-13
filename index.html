@@ -26,19 +26,25 @@
         </div>
     </div>
 
-    <!-- OVERLAY DE PAGAMENTO / ACESSO MOVEL -->
-<div id="paymentOverlay" class="auth-overlay" style="display: none;">
-    <div class="auth-box" style="text-align: center; max-width: 450px;">
-        <h2>Frajola TV</h2>
-        <p style="color: #aaa; margin-bottom: 20px;">A sua conta precisa de ser ativada ou acedida no dispositivo móvel.</p>
+   <!-- OVERLAY DE PAGAMENTO / ACESSO MOVEL -->
+<div id="paymentOverlay" class="auth-overlay" style="display: none; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999;">
+    <div class="auth-box" style="background: #181818; padding: 30px; border-radius: 8px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <h2 style="color: #fff; margin-bottom: 10px; font-family: sans-serif;">Frajola TV</h2>
+        <p id="paymentMsg" style="color: #aaa; margin-bottom: 20px; font-size: 14px;">A sua conta precisa de ativação ou acesso móvel.</p>
         
         <div style="background: #222; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left;">
-            <p style="color: #fff; font-size: 14px; margin-bottom: 8px;">📱 <b>Instalar no Telemóvel / Android:</b></p>
-            <p style="color: #bbb; font-size: 13px; line-height: 1.4;">Acede a <b>frajola-tv.web.app</b> pelo navegador do teu telemóvel ou lê o código/link de instalação para assistir onde quiseres.</p>
+            <p style="color: #fff; font-size: 14px; margin-bottom: 8px;">📱 <b>Versão para Android / Telemóvel:</b></p>
+            <p style="color: #bbb; font-size: 13px; line-height: 1.4; margin-bottom: 12px;">Transfira o aplicativo oficial para o seu telemóvel para assistir onde quiser.</p>
+            
+            <!-- BOTÃO DE DOWNLOAD DO APK -->
+            <a href="https://frajola-tv.web.app/frajolatv.apk" target="_blank" style="display: block; width: 100%; padding: 12px; background: #28a745; color: white; text-align: center; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px; box-sizing: border-box;">
+                BAIXAR APLICATIVO (APK)
+            </a>
         </div>
 
-        <button onclick="fazerLogout()" style="width: 100%; padding: 12px; background: #e50914; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-            SAIR E ENTRAR COM OUTRA CONTA
+        <!-- BOTÃO DE SAIR -->
+        <button onclick="fazerLogout()" style="width: 100%; padding: 12px; background: #e50914; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px;">
+            SAIR DA CONTA
         </button>
     </div>
 </div>

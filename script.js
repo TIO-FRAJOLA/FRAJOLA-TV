@@ -104,7 +104,14 @@ auth.onAuthStateChanged(async (user) => {
 
 function fazerLogout() {
     isPlaylistLoaded = false;
-    auth.signOut();
+    auth.signOut().then(() => {
+        document.getElementById('paymentOverlay').style.display = 'none';
+        document.getElementById('authOverlay').style.display = 'flex';
+        window.location.reload();
+    }).catch((error) => {
+        console.error("Erro ao sair:", error);
+        window.location.reload();
+    });
 }
 
 function loadOfficialPlaylist() {
