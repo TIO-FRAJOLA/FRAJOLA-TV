@@ -25,6 +25,7 @@ let currentSelectedChannel = null;
 let currentView = 'home';
 let selectedCategoryName = 'all';
 let isRegisterMode = false;
+let isPlaylistLoaded = false;
 
 const OFFICIAL_PLAYLIST_URL = 'http://digsrv.me/get.php?username=18204197&password=48394902&type=m3u';
 
@@ -68,57 +69,46 @@ function executarAcaoAuth() {
 }
 
 auth.onAuthStateChanged(async (user) => {
-    let finished = false;
-    const safetyTimeout = setTimeout(() => {
-        if (!finished) {
-            document.getElementById('authOverlay').style.display = 'flex';
-            document.getElementById('paymentOverlay').style.display = 'none';
-        }
-    }, 4000);
-
     if (user) {
         try {
+            // Contas de administrador / acesso direto
             if (user.email === 'matheus.adrih@gmail.com' || user.email === 'tio.frajola@gmail.com') {
-                finished = true;
-                clearTimeout(safetyTimeout);
                 document.getElementById('authOverlay').style.display = 'none';
                 document.getElementById('paymentOverlay').style.display = 'none';
-                loadOfficialPlaylist();
+                if (!isPlaylistLoaded) loadOfficialPlaylist();
                 return;
             }
 
             const docRef = db.collection('usuarios').doc(user.uid);
             const doc = await docRef.get();
-            finished = true;
-            clearTimeout(safetyTimeout);
 
             if (doc.exists && doc.data().ativo === true) {
                 document.getElementById('authOverlay').style.display = 'none';
                 document.getElementById('paymentOverlay').style.display = 'none';
-                loadOfficialPlaylist();
+                if (!isPlaylistLoaded) loadOfficialPlaylist();
             } else {
                 document.getElementById('authOverlay').style.display = 'none';
                 document.getElementById('paymentOverlay').style.display = 'flex';
             }
         } catch (error) {
-            finished = true;
-            clearTimeout(safetyTimeout);
+            console.error("Erro na verificação do utilizador:", error);
             document.getElementById('authOverlay').style.display = 'none';
             document.getElementById('paymentOverlay').style.display = 'flex';
         }
     } else {
-        finished = true;
-        clearTimeout(safetyTimeout);
+        isPlaylistLoaded = false;
         document.getElementById('authOverlay').style.display = 'flex';
         document.getElementById('paymentOverlay').style.display = 'none';
     }
 });
 
 function fazerLogout() {
+    isPlaylistLoaded = false;
     auth.signOut();
 }
 
 function loadOfficialPlaylist() {
+    isPlaylistLoaded = true;
     fetch(OFFICIAL_PLAYLIST_URL, { redirect: 'follow' })
         .then(res => {
             if (!res.ok) throw new Error('Erro HTTP: ' + res.status);
@@ -131,7 +121,10 @@ function loadOfficialPlaylist() {
                 console.error("A lista M3U veio vazia.");
             }
         })
-        .catch(err => console.error('Erro ao carregar conteúdo:', err));
+        .catch(err => {
+            console.error('Erro ao carregar conteúdo:', err);
+            isPlaylistLoaded = false;
+        });
 }
 
 function switchView(viewName) {
@@ -193,7 +186,6 @@ function parseM3U(data) {
                 currentItem.url = line;
                 playlistData.push(currentItem);
                 
-                // SEPARAÇÃO INTELIGENTE POR CATEGORIA E TIPO
                 const catLower = currentItem.category.toLowerCase();
                 const urlLower = currentItem.url.toLowerCase();
 
@@ -214,8 +206,17 @@ function parseM3U(data) {
         }
     }
 
+    if (liveChannelsData.length === 0) {
+        liveChannelsData = [...playlistData];
+    }
+
     processCategories();
     renderHomeRows();
+
+    if (currentView === 'live') {
+        renderCategories();
+        filterLiveChannels();
+    }
 }
 
 function processCategories() {
@@ -280,23 +281,20 @@ function renderCategoryGrid(type) {
     let title = '';
 
     if (type === 'movies') {
-        title = 'Filmes & VOD';
-        filtered = moviesData;
+        title = 'Filmes em Destaque';
+        filtered = moviesData.length > 0 ? moviesData : playlistData.filter(i => i.category.toLowerCase().includes('filme') || i.category.toLowerCase().includes('movie'));
     } else if (type === 'series') {
         title = 'Séries Populares';
-        filtered = seriesData;
+        filtered = seriesData.length > 0 ? seriesData : playlistData.filter(i => i.category.toLowerCase().includes('série') || i.category.toLowerCase().includes('serie'));
     } else if (type === 'kids') {
         title = 'Infantil & Desenhos';
-        filtered = kidsData;
+        filtered = kidsData.length > 0 ? kidsData : playlistData.filter(i => i.category.toLowerCase().includes('infantil') || i.category.toLowerCase().includes('kids'));
     } else if (type === 'anime') {
         title = 'Animes';
-        filtered = animeData;
+        filtered = animeData.length > 0 ? animeData : playlistData.filter(i => i.category.toLowerCase().includes('anime'));
     }
 
-    // Se a categoria específica não contiver itens, faz um fallback gracioso
-    if (filtered.length === 0) {
-        filtered = playlistData.slice(0, 100);
-    }
+    if (filtered.length === 0) filtered = playlistData.slice(0, 100);
 
     renderCustomGrid(title, filtered);
 }
@@ -394,10 +392,6 @@ function renderChannelList(channels) {
 function playLiveStream(item, element) {
     currentSelectedChannel = item;
 
-    console.log("=========================================");
-    console.log("CANAL SELECIONADO:", item.title);
-    console.log("LINK ORIGINAL:", item.url);
-
     document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
     if (element) element.classList.add('active');
 
@@ -418,15 +412,11 @@ function playLiveStream(item, element) {
 
     let streamUrl = item.url.trim();
 
-    // Se for um canal sem extensão, coloca .m3u8 para forçar HLS
     if (!streamUrl.endsWith('.m3u8') && !streamUrl.endsWith('.ts') && !streamUrl.endsWith('.mp4') && !streamUrl.endsWith('.mkv')) {
         streamUrl = streamUrl + '.m3u8';
     } else if (streamUrl.endsWith('.ts')) {
         streamUrl = streamUrl.replace(/\.ts$/, '.m3u8');
     }
-
-    console.log("LINK PROCESSADO PARA O PLAYER:", streamUrl);
-    console.log("=========================================");
 
     if (Hls.isSupported() && !streamUrl.endsWith('.mp4') && !streamUrl.endsWith('.mkv')) {
         const hls = new Hls({
@@ -464,7 +454,6 @@ function playLiveStream(item, element) {
             }
         });
     } else {
-        // Filmes e VOD (.mp4 / .mkv) reproduzem diretamente no leitor HTML5 nativo
         video.src = streamUrl;
         video.load();
         video.play().catch(() => {
