@@ -8,16 +8,17 @@ const firebaseConfig = {
     appId: "1:409362889234:web:a9c2cc4a6scbccf41a1cb"
 };
 
-// Inicialização das instâncias do Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Módulo nativo do Node.js para requisições HTTP sem bloqueios de CORS/Electron
-const http = require('http');
-
-// Variáveis globais de estado
 let playlistData = [];
+let liveChannelsData = [];
+let moviesData = [];
+let seriesData = [];
+let kidsData = [];
+let animeData = [];
+
 let categories = {};
 let favoriteChannels = JSON.parse(localStorage.getItem('frajola_favorites') || '[]');
 let currentSelectedChannel = null;
@@ -25,9 +26,8 @@ let currentView = 'home';
 let selectedCategoryName = 'all';
 let isRegisterMode = false;
 
-const OFFICIAL_PLAYLIST_URL = 'http://digsrv.me/get.php?username=49175447&password=30117803&type=m3u';
+const OFFICIAL_PLAYLIST_URL = 'http://digsrv.me/get.php?username=18204197&password=48394902&type=m3u';
 
-// Alterna a interface da modal entre Login e Cadastro
 function alternarModoAuth() {
     isRegisterMode = !isRegisterMode;
     document.getElementById('authSubtitle').innerText = isRegisterMode ? 'Crie a sua nova conta' : 'Entre com a sua conta para acessar';
@@ -36,7 +36,6 @@ function alternarModoAuth() {
     document.getElementById('authError').innerText = '';
 }
 
-// Processa o Login ou o Cadastro de utilizadores
 function executarAcaoAuth() {
     const email = document.getElementById('authEmail').value.trim();
     const senha = document.getElementById('authPassword').value.trim();
@@ -55,37 +54,23 @@ function executarAcaoAuth() {
                 const uid = userCredential.user.uid;
                 return db.collection('usuarios').doc(uid).set({
                     email: email,
-                    ativo: true, // Define como true para liberar acesso imediato ao cadastrar
+                    ativo: true,
                     criadoEm: new Date()
                 });
             })
-            .then(() => {
-                erroEl.innerText = '';
-            })
-            .catch((error) => {
-                console.error(error);
-                erroEl.innerText = 'Erro: ' + error.message;
-            });
+            .then(() => { erroEl.innerText = ''; })
+            .catch((error) => { erroEl.innerText = 'Erro: ' + error.message; });
     } else {
         auth.signInWithEmailAndPassword(email, senha)
-            .then(() => {
-                erroEl.innerText = '';
-            })
-            .catch((error) => {
-                console.error(error);
-                erroEl.innerText = 'E-mail ou senha incorretos.';
-            });
+            .then(() => { erroEl.innerText = ''; })
+            .catch((error) => { erroEl.innerText = 'E-mail ou senha incorretos.'; });
     }
 }
 
-// MANTÉM A SESSÃO E VERIFICA O ACESSO NO FIRESTORE (VERSÃO BLINDADA)
 auth.onAuthStateChanged(async (user) => {
     let finished = false;
-    
-    // Timeout de segurança: se o Firebase demorar mais de 4 segundos a responder, destrava a interface
     const safetyTimeout = setTimeout(() => {
         if (!finished) {
-            console.warn("Aviso: Verificação demorou muito, liberando interface por segurança.");
             document.getElementById('authOverlay').style.display = 'flex';
             document.getElementById('paymentOverlay').style.display = 'none';
         }
@@ -93,7 +78,6 @@ auth.onAuthStateChanged(async (user) => {
 
     if (user) {
         try {
-            // SE FOR O TEU E-MAIL PRINCIPAL, LIBERA O ACESSO DIRETO
             if (user.email === 'matheus.adrih@gmail.com' || user.email === 'tio.frajola@gmail.com') {
                 finished = true;
                 clearTimeout(safetyTimeout);
@@ -105,7 +89,6 @@ auth.onAuthStateChanged(async (user) => {
 
             const docRef = db.collection('usuarios').doc(user.uid);
             const doc = await docRef.get();
-
             finished = true;
             clearTimeout(safetyTimeout);
 
@@ -120,7 +103,6 @@ auth.onAuthStateChanged(async (user) => {
         } catch (error) {
             finished = true;
             clearTimeout(safetyTimeout);
-            console.error("Erro ao verificar utilizador no Firestore:", error);
             document.getElementById('authOverlay').style.display = 'none';
             document.getElementById('paymentOverlay').style.display = 'flex';
         }
@@ -137,21 +119,19 @@ function fazerLogout() {
 }
 
 function loadOfficialPlaylist() {
-    http.get(OFFICIAL_PLAYLIST_URL, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-            data += chunk;
-        });
-        res.on('end', () => {
+    fetch(OFFICIAL_PLAYLIST_URL, { redirect: 'follow' })
+        .then(res => {
+            if (!res.ok) throw new Error('Erro HTTP: ' + res.status);
+            return res.text();
+        })
+        .then(data => {
             if (data && data.length > 10) {
                 parseM3U(data);
             } else {
-                console.error("A lista M3U veio vazia ou inválida.");
+                console.error("A lista M3U veio vazia.");
             }
-        });
-    }).on('error', (err) => {
-        console.error('Erro ao carregar conteúdo do fornecedor:', err);
-    });
+        })
+        .catch(err => console.error('Erro ao carregar conteúdo:', err));
 }
 
 function switchView(viewName) {
@@ -164,23 +144,33 @@ function switchView(viewName) {
 
     if (viewName === 'home') {
         document.getElementById('view-home').classList.add('active');
+        renderHomeRows();
     } else if (viewName === 'live') {
         document.getElementById('view-live').classList.add('active');
         renderCategories();
         filterLiveChannels();
+    } else if (viewName === 'favs') {
+        document.getElementById('view-grid').classList.add('active');
+        renderCustomGrid('Meus Favoritos', favoriteChannels);
     } else {
         document.getElementById('view-grid').classList.add('active');
-        renderGridContent(viewName);
+        renderCategoryGrid(viewName);
     }
 }
 
 function parseM3U(data) {
     playlistData = [];
+    liveChannelsData = [];
+    moviesData = [];
+    seriesData = [];
+    kidsData = [];
+    animeData = [];
+
     const lines = data.split('\n');
     let currentItem = null;
 
-    lines.forEach((line, idx) => {
-        line = line.trim();
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
         if (line.startsWith('#EXTINF:')) {
             let cleanTitle = line.split(',')[1] || 'Sem título';
             let groupMatch = line.match(/group-title="([^"]+)"/i);
@@ -192,7 +182,7 @@ function parseM3U(data) {
             cleanTitle = cleanTitle.replace(/group-title="[^"]*"/gi, '').trim();
 
             currentItem = { 
-                id: idx, 
+                id: playlistData.length, 
                 title: cleanTitle, 
                 url: '', 
                 category: cat, 
@@ -202,47 +192,167 @@ function parseM3U(data) {
             if (currentItem) {
                 currentItem.url = line;
                 playlistData.push(currentItem);
+                
+                // SEPARAÇÃO INTELIGENTE POR CATEGORIA E TIPO
+                const catLower = currentItem.category.toLowerCase();
+                const urlLower = currentItem.url.toLowerCase();
+
+                if (catLower.includes('filme') || catLower.includes('movie') || catLower.includes('vod') || catLower.includes('cine') || catLower.includes('4k') || catLower.includes('lançamento') || urlLower.endsWith('.mp4') || urlLower.endsWith('.mkv')) {
+                    moviesData.push(currentItem);
+                } else if (catLower.includes('série') || catLower.includes('serie') || catLower.includes('temporada') || catLower.includes('episodes')) {
+                    seriesData.push(currentItem);
+                } else if (catLower.includes('infantil') || catLower.includes('kids') || catLower.includes('desenho')) {
+                    kidsData.push(currentItem);
+                } else if (catLower.includes('anime') || catLower.includes('otaku')) {
+                    animeData.push(currentItem);
+                } else {
+                    liveChannelsData.push(currentItem);
+                }
+
                 currentItem = null;
             }
         }
-    });
+    }
 
     processCategories();
-    if (currentView !== 'home' && currentView !== 'live') {
-        renderGridContent(currentView);
-    } else if (currentView === 'live') {
-        renderCategories();
-        filterLiveChannels();
-    }
+    renderHomeRows();
 }
 
 function processCategories() {
     categories = {};
-    playlistData.forEach(item => {
+    liveChannelsData.forEach(item => {
         let cat = item.category || 'Outros';
         if (!categories[cat]) categories[cat] = [];
         categories[cat].push(item);
     });
 }
 
+function renderHomeRows() {
+    const container = document.getElementById('homeRowsContainer');
+    if (!container || playlistData.length === 0) return;
+
+    let heroItem = playlistData.find(i => i.logo && i.logo.startsWith('http')) || playlistData[0];
+    document.getElementById('heroTitle').innerText = heroItem.title;
+    document.getElementById('heroDesc').innerText = 'Categoria: ' + heroItem.category;
+    window.heroItemTarget = heroItem;
+
+    let html = '';
+    let categoryKeys = Object.keys(categories).slice(0, 10);
+
+    categoryKeys.forEach(cat => {
+        let items = categories[cat].slice(0, 20);
+        let cardsHtml = items.map(item => {
+            let safeStr = JSON.stringify(item).replace(/"/g, '&quot;');
+            let img = (item.logo && item.logo.startsWith('http')) ? item.logo : 'frajola.jpg';
+            return `
+                <div class="media-card" onclick='playFromHome(${safeStr})'>
+                    <img src="${img}" onerror="this.src='frajola.jpg'">
+                    <div class="title">${item.title}</div>
+                </div>
+            `;
+        }).join('');
+
+        html += `
+            <div class="content-row">
+                <div class="row-title">${cat}</div>
+                <div class="row-cards">${cardsHtml}</div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function playHeroStream() {
+    if (window.heroItemTarget) {
+        switchView('live');
+        playLiveStream(window.heroItemTarget, null);
+    }
+}
+
+function playFromHome(item) {
+    switchView('live');
+    playLiveStream(item, null);
+}
+
+function renderCategoryGrid(type) {
+    let filtered = [];
+    let title = '';
+
+    if (type === 'movies') {
+        title = 'Filmes & VOD';
+        filtered = moviesData;
+    } else if (type === 'series') {
+        title = 'Séries Populares';
+        filtered = seriesData;
+    } else if (type === 'kids') {
+        title = 'Infantil & Desenhos';
+        filtered = kidsData;
+    } else if (type === 'anime') {
+        title = 'Animes';
+        filtered = animeData;
+    }
+
+    // Se a categoria específica não contiver itens, faz um fallback gracioso
+    if (filtered.length === 0) {
+        filtered = playlistData.slice(0, 100);
+    }
+
+    renderCustomGrid(title, filtered);
+}
+
+function renderCustomGrid(title, items) {
+    document.getElementById('gridTitle').innerText = `${title} (${items.length} itens)`;
+    const container = document.getElementById('gridCardsContainer');
+    
+    let limit = items.slice(0, 200);
+    container.innerHTML = limit.map(item => {
+        let safeStr = JSON.stringify(item).replace(/"/g, '&quot;');
+        let img = (item.logo && item.logo.startsWith('http')) ? item.logo : 'frajola.jpg';
+        return `
+            <div class="media-card" onclick='playFromGrid(${safeStr})'>
+                <img src="${img}" onerror="this.src='frajola.jpg'">
+                <div class="title">${item.title}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function playFromGrid(item) {
+    switchView('live');
+    playLiveStream(item, null);
+}
+
+function filterGridContent() {
+    const q = document.getElementById('gridSearchInput').value.toLowerCase();
+    const cards = document.querySelectorAll('#gridCardsContainer .media-card');
+    cards.forEach(card => {
+        let title = card.querySelector('.title').innerText.toLowerCase();
+        card.style.display = title.includes(q) ? 'flex' : 'none';
+    });
+}
+
 function renderCategories() {
     const list = document.getElementById('liveCategoryList');
-    list.innerHTML = `
+    if (!list) return;
+
+    let html = `
         <li class="${selectedCategoryName === 'all' ? 'active' : ''}" onclick="selectCategory('all', this)">
-            <span>Todos</span> <span class="badge">${playlistData.length}</span>
+            <span>Todos os Canais</span> <span>${liveChannelsData.length}</span>
         </li>
         <li class="${selectedCategoryName === 'fav' ? 'active' : ''}" onclick="selectCategory('fav', this)">
-            <span>⭐ Favoritos</span> <span class="badge">${favoriteChannels.length}</span>
+            <span>⭐ Favoritos</span> <span>${favoriteChannels.length}</span>
         </li>
     `;
 
     Object.keys(categories).forEach(cat => {
-        const li = document.createElement('li');
-        if (selectedCategoryName === cat) li.className = 'active';
-        li.innerHTML = `<span>${cat}</span> <span class="badge">${categories[cat].length}</span>`;
-        li.onclick = () => selectCategory(cat, li);
-        list.appendChild(li);
+        html += `
+            <li class="${selectedCategoryName === cat ? 'active' : ''}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}', this)">
+                <span>${cat}</span> <span>${categories[cat].length}</span>
+            </li>
+        `;
     });
+    list.innerHTML = html;
 }
 
 function selectCategory(catName, el) {
@@ -256,49 +366,38 @@ function filterLiveChannels() {
     const query = document.getElementById('liveSearchInput').value.toLowerCase();
     let channels = [];
 
-    if (selectedCategoryName === 'all') {
-        channels = playlistData;
-    } else if (selectedCategoryName === 'fav') {
-        channels = favoriteChannels;
-    } else {
-        channels = categories[selectedCategoryName] || [];
-    }
+    if (selectedCategoryName === 'all') channels = liveChannelsData;
+    else if (selectedCategoryName === 'fav') channels = favoriteChannels;
+    else channels = categories[selectedCategoryName] || [];
 
-    if (query) {
-        channels = channels.filter(c => c.title.toLowerCase().includes(query));
-    }
-
+    if (query) channels = channels.filter(c => c.title.toLowerCase().includes(query));
     renderChannelList(channels);
 }
 
 function renderChannelList(channels) {
     const container = document.getElementById('channelList');
-    container.innerHTML = '';
+    if (!container) return;
 
-    if (channels.length === 0) {
-        container.innerHTML = '<div class="empty">Nenhum item encontrado.</div>';
-        return;
-    }
-
-    channels.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'channel-item';
-        if (currentSelectedChannel && currentSelectedChannel.url === item.url) {
-            div.classList.add('active');
-        }
-
-        div.innerHTML = `
-            <span class="channel-num">${index + 1}</span>
-            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title}</span>
+    let limit = channels.slice(0, 300);
+    container.innerHTML = limit.map((item, idx) => {
+        let safeStr = JSON.stringify(item).replace(/"/g, '&quot;');
+        let activeClass = (currentSelectedChannel && currentSelectedChannel.url === item.url) ? 'active' : '';
+        return `
+            <div class="channel-item ${activeClass}" onclick='playLiveStream(${safeStr}, this)'>
+                <span style="width:30px; color:#666;">${idx + 1}</span>
+                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title}</span>
+            </div>
         `;
-
-        div.onclick = () => playLiveStream(item, div);
-        container.appendChild(div);
-    });
+    }).join('');
 }
 
 function playLiveStream(item, element) {
     currentSelectedChannel = item;
+
+    console.log("=========================================");
+    console.log("CANAL SELECIONADO:", item.title);
+    console.log("LINK ORIGINAL:", item.url);
+
     document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
     if (element) element.classList.add('active');
 
@@ -306,112 +405,84 @@ function playLiveStream(item, element) {
     document.getElementById('currentChannelSub').innerText = 'Categoria: ' + item.category;
 
     const video = document.getElementById('livePlayer');
+    if (!video) return;
 
-    if (window.hlsPlayer) window.hlsPlayer.destroy();
+    if (window.hlsPlayer) {
+        window.hlsPlayer.destroy();
+        window.hlsPlayer = null;
+    }
 
-    const startPlayback = () => {
-        let playPromise = video.play();
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                video.muted = false;
-            }).catch(() => {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+
+    let streamUrl = item.url.trim();
+
+    // Se for um canal sem extensão, coloca .m3u8 para forçar HLS
+    if (!streamUrl.endsWith('.m3u8') && !streamUrl.endsWith('.ts') && !streamUrl.endsWith('.mp4') && !streamUrl.endsWith('.mkv')) {
+        streamUrl = streamUrl + '.m3u8';
+    } else if (streamUrl.endsWith('.ts')) {
+        streamUrl = streamUrl.replace(/\.ts$/, '.m3u8');
+    }
+
+    console.log("LINK PROCESSADO PARA O PLAYER:", streamUrl);
+    console.log("=========================================");
+
+    if (Hls.isSupported() && !streamUrl.endsWith('.mp4') && !streamUrl.endsWith('.mkv')) {
+        const hls = new Hls({
+            maxBufferLength: 15,
+            liveSyncDurationCount: 2,
+            enableWorker: true,
+            lowLatencyMode: true,
+            xhrSetup: function (xhr, url) {
+                xhr.withCredentials = false;
+            }
+        });
+        window.hlsPlayer = hls;
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch(() => {
                 video.muted = true;
                 video.play();
             });
-        }
-    };
+        });
 
-    if (Hls.isSupported()) {
-        const hls = new Hls({ enableWorker: true });
-        window.hlsPlayer = hls;
-        hls.loadSource(item.url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => startPlayback());
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = item.url;
-        startPlayback();
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                hls.destroy();
+                window.hlsPlayer = null;
+                
+                let tsFallbackUrl = item.url.trim();
+                if (!tsFallbackUrl.endsWith('.ts') && !tsFallbackUrl.endsWith('.mp4')) {
+                    tsFallbackUrl = tsFallbackUrl + '.ts';
+                }
+                video.src = tsFallbackUrl;
+                video.load();
+                video.play().catch(err => console.log("Erro no fallback nativo:", err));
+            }
+        });
+    } else {
+        // Filmes e VOD (.mp4 / .mkv) reproduzem diretamente no leitor HTML5 nativo
+        video.src = streamUrl;
+        video.load();
+        video.play().catch(() => {
+            video.muted = true;
+            video.play();
+        });
     }
 }
 
 function toggleFavCurrent() {
     if (!currentSelectedChannel) return;
-    const index = favoriteChannels.findIndex(f => f.url === currentSelectedChannel.url);
-    if (index >= 0) {
-        favoriteChannels.splice(index, 1);
+    const idx = favoriteChannels.findIndex(f => f.url === currentSelectedChannel.url);
+    if (idx >= 0) {
+        favoriteChannels.splice(idx, 1);
         alert('Removido dos favoritos!');
     } else {
         favoriteChannels.push(currentSelectedChannel);
         alert('Adicionado aos favoritos!');
     }
     localStorage.setItem('frajola_favorites', JSON.stringify(favoriteChannels));
-    document.getElementById('cat-count-fav').innerText = favoriteChannels.length;
-}
-
-function renderGridContent(type) {
-    const viewGrid = document.getElementById('view-grid');
-    const titles = {
-        'destaques': 'Destaques',
-        'movies': 'Filmes',
-        'series': 'Séries',
-        'kids': 'Kids',
-        'anime': 'Anime'
-    };
-
-    const filtered = playlistData.filter(item => {
-        const title = item.title.toLowerCase();
-        const cat = item.category.toLowerCase();
-        
-        if (type === 'destaques') return true;
-        if (type === 'movies') return cat.includes('movie') || cat.includes('filme') || cat.includes('vod');
-        if (type === 'series') return cat.includes('serie') || cat.includes('série') || title.includes('s01');
-        if (type === 'kids') return cat.includes('infantil') || cat.includes('kids') || cat.includes('desenho');
-        if (type === 'anime') return cat.includes('anime') || title.includes('naruto') || title.includes('dragon ball');
-        return false;
-    });
-
-    if (filtered.length === 0) {
-        viewGrid.innerHTML = `
-            <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2>${titles[type]}</h2>
-                <input type="text" id="gridSearchInput" placeholder="Buscar..." oninput="filterGridContent()" style="padding: 6px 10px; background: #120303; border: 1px solid #7f1d1d; color: #fff; border-radius: 4px; font-size: 12px;">
-            </div>
-            <div class="empty">Nenhum item encontrado nesta categoria.</div>
-        `;
-        return;
-    }
-
-    let cardsHTML = filtered.map(item => `
-        <div class="vod-card" onclick="switchView('live'); playLiveStream(${JSON.stringify(item).replace(/"/g, '&quot;')}, null)">
-            <img src="${item.logo || 'frajola.jpg'}" onerror="this.src='frajola.jpg'">
-            <div class="info">${item.title}</div>
-        </div>
-    `).join('');
-
-    viewGrid.innerHTML = `
-        <div class="grid-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h2>${titles[type]}</h2>
-            <input type="text" id="gridSearchInput" placeholder="Buscar..." oninput="filterGridContent()" style="padding: 6px 10px; background: #120303; border: 1px solid #7f1d1d; color: #fff; border-radius: 4px; font-size: 12px;">
-        </div>
-        <div class="vod-grid">
-            ${cardsHTML}
-        </div>
-    `;
-}
-
-function filterGridContent() {
-    const queryInput = document.getElementById('gridSearchInput');
-    if (!queryInput) return;
-    const query = queryInput.value.toLowerCase();
-    const cards = document.querySelectorAll('.vod-card');
-    cards.forEach(card => {
-        const titleEl = card.querySelector('.info');
-        if (titleEl) {
-            const title = titleEl.innerText.toLowerCase();
-            if (title.includes(query)) {
-                card.style.display = 'flex';
-            } else {
-                card.style.display = 'none';
-            }
-        }
-    });
 }

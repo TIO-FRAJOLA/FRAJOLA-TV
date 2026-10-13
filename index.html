@@ -2,147 +2,114 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Frajola TV Player</title>
-
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#b91c1c">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/jpeg" href="frajola.jpg">
-    <link rel="apple-touch-icon" href="frajola.jpg">
-
+    <title>Frajola TV - Streaming</title>
     <link rel="stylesheet" href="style.css">
+    <!-- HLS.js para reprodução de streams -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-    <!-- TELA DE LOGIN / CADASTRO -->
-    <div id="authOverlay" class="login-overlay">
-        <div class="login-card">
-            <h2>Frajola <b>TV</b></h2>
+    <!-- TELA DE AUTENTICAÇÃO -->
+    <div id="authOverlay" class="overlay-screen">
+        <div class="auth-card">
+            <h1>Frajola <span>TV</span></h1>
             <p id="authSubtitle">Entre com a sua conta para acessar</p>
-            
-            <div class="input-group">
-                <input type="email" id="authEmail" placeholder="E-mail">
-            </div>
-            <div class="input-group">
-                <input type="password" id="authPassword" placeholder="Senha">
-            </div>
-            
-            <button id="authBtn" class="btn-login-action" onclick="executarAcaoAuth()">ACESSAR CONTA</button>
+            <input type="email" id="authEmail" placeholder="E-mail" autocomplete="off">
+            <input type="password" id="authPassword" placeholder="Senha">
+            <button id="authBtn" onclick="executarAcaoAuth()">ACESSAR CONTA</button>
+            <div id="authError" class="error-msg"></div>
             <p id="authToggleText" class="toggle-auth" onclick="alternarModoAuth()">Não tem conta? Criar agora</p>
-            <p id="authError" class="login-error"></p>
         </div>
     </div>
 
-    <!-- TELA DE PAGAMENTO / PLANO EXPIRADO -->
-    <div id="paymentOverlay" class="login-overlay" style="display: none;">
-        <div class="login-card" style="width: 360px;">
-            <h2>⚠️ Plano Expirado</h2>
-            <p style="margin-top: 10px; color: #fca5a5;">O seu período de acesso terminou ou a sua assinatura precisa ser ativada.</p>
-            <div style="background: #120303; padding: 12px; border-radius: 6px; margin: 15px 0; border: 1px solid #7f1d1d;">
-                <p style="font-size: 11px; color: #fff; margin-bottom: 5px;">Chave Pix para Renovação:</p>
-                <code style="color: #ef4444; font-size: 12px; word-break: break-all;">sua-chave-pix@exemplo.com</code>
+    <!-- TELA DE PAGAMENTO / BLOQUEIO -->
+    <div id="paymentOverlay" class="overlay-screen" style="display: none;">
+        <div class="auth-card payment-card">
+            <h1>Assinatura Expirada</h1>
+            <p>Faça o pagamento via PIX para liberar o seu acesso instantâneo ao catálogo completo.</p>
+            <div class="pix-box">
+                <p>Chave PIX (E-mail): <strong>suporte@frajolatv.com</strong></p>
+                <p style="font-size: 12px; color: #aaa;">Após o pagamento, o seu acesso será liberado automaticamente.</p>
             </div>
-            <p style="font-size: 11px; margin-bottom: 15px;">Após o pagamento, envie o comprovante para liberar o seu acesso instantaneamente.</p>
-            <button class="btn-login-action" onclick="fazerLogout()">Sair / Trocar Conta</button>
+            <button onclick="location.reload()" style="background:#22c55e;">Já fiz o pagamento</button>
+            <button onclick="fazerLogout()" style="background:#374151; margin-top: 10px;">Sair da Conta</button>
         </div>
     </div>
 
-    <!-- Header / Barra Superior -->
-    <header>
-        <div class="brand">
-            <span>Frajola <b>TV</b></span>
-        </div>
+    <!-- APLICAÇÃO PRINCIPAL -->
+    <div id="appContainer" class="app-layout">
+        <!-- BARRA DE NAVEGAÇÃO LATERAL (SIDEBAR) -->
+        <aside class="sidebar">
+            <div class="logo">Frajola<span>TV</span></div>
+            <nav class="nav-menu">
+                <button class="nav-btn active" id="btn-home" onclick="switchView('home')">🏠 Início</button>
+                <button class="nav-btn" id="btn-movies" onclick="switchView('movies')">🎬 Filmes</button>
+                <button class="nav-btn" id="btn-series" onclick="switchView('series')">📺 Séries</button>
+                <button class="nav-btn" id="btn-kids" onclick="switchView('kids')">🧸 Infantil</button>
+                <button class="nav-btn" id="btn-anime" onclick="switchView('anime')">⚡ Animes</button>
+                <button class="nav-btn" id="btn-live" onclick="switchView('live')">📡 Canais Ao Vivo</button>
+                <button class="nav-btn" id="btn-favs" onclick="switchView('favs')">⭐ Favoritos</button>
+            </nav>
+            <div class="sidebar-footer">
+                <button onclick="fazerLogout()" class="logout-btn">Sair</button>
+            </div>
+        </aside>
 
-        <nav class="top-nav">
-            <button class="nav-btn active" id="btn-home" onclick="switchView('home')">INÍCIO</button>
-            <button class="nav-btn" id="btn-live" onclick="switchView('live')">TV</button>
-            <button class="nav-btn" id="btn-destaques" onclick="switchView('destaques')">DESTAQUES</button>
-            <button class="nav-btn" id="btn-movies" onclick="switchView('movies')">FILMES</button>
-            <button class="nav-btn" id="btn-series" onclick="switchView('series')">SÉRIES</button>
-            <button class="nav-btn" id="btn-kids" onclick="switchView('kids')">KIDS</button>
-            <button class="nav-btn" id="btn-anime" onclick="switchView('anime')">ANIME</button>
-        </nav>
-
-        <div class="actions">
-            <button class="btn-logout" onclick="fazerLogout()" title="Sair da Conta">🚪 Sair</button>
-        </div>
-    </header>
-
-    <!-- Conteúdo Principal -->
-    <main>
-        <section id="view-home" class="view-panel active">
-            <div class="hero-cards">
-                <div class="hero-card" onclick="switchView('live')">
-                    <div class="icon">📺</div>
-                    <div class="title">TV ao Vivo</div>
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="main-content">
+            
+            <!-- VIEW HOME (ESTILO NETFLIX COM DESTAQUES E LINHAS) -->
+            <div id="view-home" class="view-panel active">
+                <div class="hero-banner">
+                    <div class="hero-info">
+                        <h1 id="heroTitle">Bem-vindo ao Frajola TV</h1>
+                        <p id="heroDesc">O melhor do cinema, séries e TV ao vivo na palma da sua mão.</p>
+                        <button class="watch-now-btn" onclick="playHeroStream()">▶ Assistir Agora</button>
+                    </div>
                 </div>
-                <div class="hero-card" onclick="switchView('movies')">
-                    <div class="icon">🎬</div>
-                    <div class="title">Filmes</div>
-                </div>
-                <div class="hero-card" onclick="switchView('series')">
-                    <div class="icon">🍿</div>
-                    <div class="title">Séries</div>
-                </div>
-                <div class="hero-card" onclick="switchView('kids')">
-                    <div class="icon">🎈</div>
-                    <div class="title">Kids</div>
-                </div>
-                <div class="hero-card" onclick="switchView('anime')">
-                    <div class="icon">⚔️</div>
-                    <div class="title">Anime</div>
+                <div id="homeRowsContainer" class="rows-container">
+                    <!-- Preenchido dinamicamente por categorias em carrossel -->
                 </div>
             </div>
-        </section>
 
-        <section id="view-live" class="view-panel">
-            <div class="live-tv-container">
-                <div class="col-categories">
-                    <div class="search-box">
-                        <input type="text" id="liveSearchInput" placeholder="Pesquisar canal..." oninput="filterLiveChannels()">
-                    </div>
-                    <ul class="cat-list" id="liveCategoryList">
-                        <li class="active" onclick="selectCategory('all', this)">
-                            <span>Todos</span> <span class="badge" id="cat-count-all">0</span>
-                        </li>
-                        <li onclick="selectCategory('fav', this)">
-                            <span>⭐ Favoritos</span> <span class="badge" id="cat-count-fav">0</span>
-                        </li>
-                    </ul>
+            <!-- VIEW GRID DE CONTEÚDO (FILMES, SÉRIES, KIDS, ETC) -->
+            <div id="view-grid" class="view-panel">
+                <div class="grid-topbar">
+                    <h2 id="gridTitle">Conteúdo</h2>
+                    <input type="text" id="gridSearchInput" placeholder="Pesquisar títulos..." oninput="filterGridContent()">
                 </div>
+                <div id="gridCardsContainer" class="netflix-grid"></div>
+            </div>
 
-                <div class="col-channels" id="channelList">
-                    <div class="empty">Carregando canais...</div>
-                </div>
-
-                <div class="col-player">
-                    <div class="tv-player-wrapper">
-                        <video id="livePlayer" controls autoplay playsinline></video>
-                    </div>
-                    <div class="epg-info">
-                        <h3 id="currentChannelTitle">Selecione um canal</h3>
-                        <p id="currentChannelSub" style="font-size: 12px; color: #94a3b8;">Nenhum canal em reprodução.</p>
-                        <div class="epg-actions">
-                            <button onclick="toggleFavCurrent()">⭐ Favoritar</button>
+            <!-- VIEW AO VIVO / PLAYER COMPLETO -->
+            <div id="view-live" class="view-panel">
+                <div class="live-layout">
+                    <div class="player-container">
+                        <video id="livePlayer" controls autoplay></video>
+                        <div class="player-info-bar">
+                            <div>
+                                <h3 id="currentChannelTitle">Selecione um canal</h3>
+                                <p id="currentChannelSub">Pronto para reprodução</p>
+                            </div>
+                            <button class="fav-action-btn" onclick="toggleFavCurrent()">⭐ Favoritar</button>
                         </div>
                     </div>
+                    <div class="playlist-sidebar">
+                        <div class="playlist-search">
+                            <input type="text" id="liveSearchInput" placeholder="Buscar canal..." oninput="filterLiveChannels()">
+                        </div>
+                        <ul id="liveCategoryList" class="category-list"></ul>
+                        <div id="channelList" class="channel-list"></div>
+                    </div>
                 </div>
             </div>
-        </section>
 
-        <section id="view-grid" class="view-panel">
-            <!-- Grid dinâmico -->
-        </section>
-    </main>
+        </main>
+    </div>
 
     <script src="script.js"></script>
 </body>
